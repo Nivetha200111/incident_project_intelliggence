@@ -84,27 +84,30 @@ function statusColor(s) {
 
 // ─── Panels ─────────────────────────────────────────────────────────────────────
 
-function OverviewPanel({ clusters, suggestions }) {
+function OverviewPanel({ clusters, suggestions, loading }) {
   const totalIncidents = clusters.reduce((s, c) => s + (parseInt(c.incident_count) || 0), 0);
-  const avgScore = clusters.length > 0 ? Math.round(totalIncidents / clusters.length * 8.5) : 0;
   const highImpact = clusters.filter(c => c.impact_level === 'High' || c.impact_level === 'Critical').length;
 
+  const clusterCount = clusters.length;
+  const suggestionCount = suggestions.length;
+  const isConnected = clusterCount > 0 || suggestionCount > 0;
+
   const pipeline = [
-    { name: 'Grok AI Classifier', status: 'Active', color: C.success },
+    { name: 'Grok AI Classifier', status: isConnected ? 'Active' : (loading ? 'Connecting...' : 'Unavailable'), color: isConnected ? C.success : (loading ? C.warning : C.danger) },
     { name: 'Keyword Fallback Engine', status: 'Standby', color: C.info },
     { name: 'Confidence Gate', status: '70% threshold', color: C.success },
-    { name: 'Cluster Matching Engine', status: `${clusters.length} clusters`, color: C.success },
-    { name: 'Project Suggestion Engine', status: `${suggestions.length} active`, color: C.success },
+    { name: 'Cluster Matching Engine', status: isConnected ? `${clusterCount} clusters` : (loading ? 'Loading...' : 'No data'), color: isConnected ? C.success : (loading ? C.warning : C.textSecondary) },
+    { name: 'Project Suggestion Engine', status: isConnected ? `${suggestionCount} active` : (loading ? 'Loading...' : 'No data'), color: isConnected ? C.success : (loading ? C.warning : C.textSecondary) },
   ];
 
   return (
     <div>
       <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>System Dashboard</h2>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 32 }}>
-        <StatCard label="Incidents Processed" value={totalIncidents} color={C.accent} delay={0} />
-        <StatCard label="Active Clusters" value={clusters.length} color={C.info} delay={0.05} />
-        <StatCard label="Project Suggestions" value={suggestions.length} color={C.success} delay={0.1} />
-        <StatCard label="Avg AI Confidence" value={`${avgScore > 100 ? 91 : avgScore}%`} color={C.warning} delay={0.15} />
+        <StatCard label="Incidents Processed" value={loading ? '...' : totalIncidents} color={C.accent} delay={0} />
+        <StatCard label="Active Clusters" value={loading ? '...' : clusterCount} color={C.info} delay={0.05} />
+        <StatCard label="Project Suggestions" value={loading ? '...' : suggestionCount} color={C.success} delay={0.1} />
+        <StatCard label="High Impact Clusters" value={loading ? '...' : highImpact} color={C.warning} delay={0.15} />
       </div>
 
       <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Classification Pipeline</h3>
@@ -911,7 +914,7 @@ export default function App() {
 
         {/* Main Content */}
         <main style={{ marginLeft: 220, flex: 1, padding: '32px 40px', minHeight: '100vh' }}>
-          {tab === 'overview' && <OverviewPanel clusters={clusters} suggestions={suggestions} />}
+          {tab === 'overview' && <OverviewPanel clusters={clusters} suggestions={suggestions} loading={!dataLoaded} />}
           {tab === 'submit' && <SubmitPanel />}
           {tab === 'upload' && <UploadPanel onNavigate={setTab} />}
           {tab === 'clusters' && <ClustersPanel clusters={clusters} />}
