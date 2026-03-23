@@ -11,25 +11,40 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { SN_INSTANCE, SN_USERNAME, SN_PASSWORD } = process.env;
+  const SN_INSTANCE = (process.env.SN_INSTANCE || '').trim();
+  const SN_USERNAME = (process.env.SN_USERNAME || '').trim();
+  const SN_PASSWORD = (process.env.SN_PASSWORD || '').trim();
+
+  console.log('ENV CHECK:', {
+    hasInstance: !!SN_INSTANCE,
+    hasUsername: !!SN_USERNAME,
+    hasPassword: !!SN_PASSWORD,
+    instance: SN_INSTANCE,
+    username: SN_USERNAME,
+    passwordLength: SN_PASSWORD.length
+  });
 
   if (!SN_INSTANCE || !SN_USERNAME || !SN_PASSWORD) {
     return res.status(500).json({ error: 'ServiceNow credentials not configured' });
   }
 
   try {
-    const auth = Buffer.from(`${SN_USERNAME}:${SN_PASSWORD}`).toString('base64');
+    const credentials = `${SN_USERNAME}:${SN_PASSWORD}`;
+    const auth = Buffer.from(credentials).toString('base64');
+    const url = `${SN_INSTANCE}/api/x_1809368_incide_0/incident_intelligence_api/clusters`;
 
-    const response = await fetch(
-      `${SN_INSTANCE}/api/x_1809368_incide_0/incident_intelligence_api/clusters`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Accept': 'application/json'
-        }
+    console.log('Request URL:', url);
+    console.log('Auth header prefix:', `Basic ${auth.substring(0, 10)}...`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Accept': 'application/json'
       }
-    );
+    });
+
+    console.log('ServiceNow response status:', response.status);
 
     const data = await response.json();
 

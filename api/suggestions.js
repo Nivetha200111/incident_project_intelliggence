@@ -11,7 +11,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { SN_INSTANCE, SN_USERNAME, SN_PASSWORD } = process.env;
+  const SN_INSTANCE = (process.env.SN_INSTANCE || '').trim();
+  const SN_USERNAME = (process.env.SN_USERNAME || '').trim();
+  const SN_PASSWORD = (process.env.SN_PASSWORD || '').trim();
 
   if (!SN_INSTANCE || !SN_USERNAME || !SN_PASSWORD) {
     return res.status(500).json({ error: 'ServiceNow credentials not configured' });

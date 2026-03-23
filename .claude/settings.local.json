@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "WebFetch(domain:incident-project-intelliggence.vercel.app)",
+      "Bash(curl -s -o /dev/null -w \"HTTP Status: %{http_code}\\\\nContent-Type: %{content_type}\\\\n\" https://incident-project-intelliggence.vercel.app/)",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\" https://incident-project-intelliggence.vercel.app/api/clusters)",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\" https://incident-project-intelliggence.vercel.app/api/suggestions)",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\" \"https://incident-project-intelliggence.vercel.app/api/poll-incident?sys_id=test123\")",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\" -X OPTIONS -H \"Origin: https://example.com\" -H \"Access-Control-Request-Method: POST\" https://incident-project-intelliggence.vercel.app/api/submit-incident)",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\" -X POST -H \"Content-Type: application/json\" -d '{\"\"incidents\"\":[{\"\"short_description\"\":\"\"Test bulk\"\",\"\"detailed_description\"\":\"\"Bulk test\"\"}]}' https://incident-project-intelliggence.vercel.app/api/bulk-submit)",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\" -X POST -H \"Content-Type: application/json\" -d '{\"\"short_description\"\":\"\"test\"\"}' https://incident-project-intelliggence.vercel.app/api/submit-incident)",
+      "Bash(curl -s -w \"\\\\nHTTP Status: %{http_code}\" -H \"Accept: application/json\" \"https://dev283201.service-now.com/api/now/table/sys_properties?sysparm_limit=1\" -u \"incident_intel_api:EmJh2026FFg!A\")"
     ]
   }
 }
