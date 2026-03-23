@@ -1,29 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-// ─── Mock Data ──────────────────────────────────────────────────────────────────
-
-const MOCK_CLUSTERS = [
-  { cluster_name: 'AUTH-001', theme: 'Authentication Failure', incident_count: 14, impact_level: 'High', recommendation_status: 'Recommended', summary: 'Recurring authentication failures across SSO and LDAP integrations affecting enterprise login flows. Root cause traces to token expiration handling and session management inconsistencies.' },
-  { cluster_name: 'PERF-002', theme: 'Performance Degradation', incident_count: 7, impact_level: 'Medium', recommendation_status: 'Under Review', summary: 'Application response times exceeding SLA thresholds during peak hours. Database query optimization and caching layer improvements identified as primary remediation paths.' },
-  { cluster_name: 'SEC-003', theme: 'Security Incident', incident_count: 5, impact_level: 'Medium', recommendation_status: 'Monitoring', summary: 'Multiple failed intrusion attempts detected on API endpoints. WAF rules updated but pattern analysis suggests coordinated scanning activity requiring enhanced monitoring.' },
-  { cluster_name: 'NET-004', theme: 'Network Outage', incident_count: 3, impact_level: 'Low', recommendation_status: 'Monitoring', summary: 'Intermittent connectivity issues in secondary data center. Traced to aging network switches scheduled for replacement in Q3.' },
-  { cluster_name: 'DATA-005', theme: 'Data Integrity Issue', incident_count: 2, impact_level: 'Low', recommendation_status: 'Monitoring', summary: 'Minor data synchronization discrepancies between primary and replica databases during failover events.' },
-  { cluster_name: 'INTG-006', theme: 'Integration Failure', incident_count: 2, impact_level: 'Low', recommendation_status: 'Monitoring', summary: 'Third-party API integration timeouts during vendor maintenance windows. Retry logic and circuit breaker patterns recommended.' },
-];
-
-const MOCK_SUGGESTIONS = [
-  { project_name: 'Authentication System Overhaul', source_cluster: 'AUTH-001', justification: 'With 14 incidents traced to authentication failures, a comprehensive overhaul of the SSO and LDAP integration layer would eliminate the highest-volume incident cluster. This includes implementing robust token refresh mechanisms, session failover handling, and unified identity provider management.', expected_value: 'Projected 60% reduction in authentication-related incidents (est. 8-10 fewer incidents/month), improved user satisfaction scores, and reduced help desk call volume by approximately 25%.', priority: '2 - High', status: 'Draft', support_count: 14, last_refreshed: '2026-03-23T10:00:00Z' },
-  { project_name: 'Performance Optimization Initiative', source_cluster: 'PERF-002', justification: 'Performance degradation incidents are trending upward with 7 incidents in the current period. Database query analysis reveals unoptimized joins and missing indices on high-traffic tables. A targeted optimization sprint would address root causes systematically.', expected_value: 'Expected 40% improvement in application response times, bringing p95 latency under 200ms SLA threshold. Estimated cost avoidance of $15K/month in over-provisioned infrastructure.', priority: '3 - Medium', status: 'Draft', support_count: 7, last_refreshed: '2026-03-23T10:00:00Z' },
-  { project_name: 'Security Posture Enhancement', source_cluster: 'SEC-003', justification: 'Five security incidents indicate gaps in the current defensive posture. Pattern analysis suggests the need for enhanced API gateway rules, improved rate limiting, and behavioral anomaly detection to prevent escalation.', expected_value: 'Strengthened security posture with automated threat response capabilities. Reduces mean-time-to-detect from 45 minutes to under 5 minutes for known attack patterns.', priority: '3 - Medium', status: 'Proposed', support_count: 5, last_refreshed: '2026-03-23T10:00:00Z' },
-];
-
-const MOCK_CLASSIFICATIONS = [
-  { ai_theme: 'Network Outage', ai_project_score: 95, ai_summary: 'Incident classified as network infrastructure failure. Pattern matches ongoing cluster of connectivity disruptions traced to core switch degradation in the primary distribution layer.', ai_business_impact: 'Service availability directly affected for approximately 2,400 end users. Revenue-impacting for customer-facing portal with estimated $8K/hour exposure during outage windows.', ai_root_cause: 'Aging network infrastructure with firmware beyond end-of-support lifecycle.', classifier: 'GrokClassifier' },
-  { ai_theme: 'Authentication Failure', ai_project_score: 92, ai_summary: 'Incident involves authentication service disruption. SSO token validation failures detected across multiple identity providers, consistent with the AUTH-001 cluster pattern.', ai_business_impact: 'Enterprise workforce unable to access critical business applications. Productivity loss estimated at 150 person-hours per incident occurrence across affected business units.', ai_root_cause: 'Token expiration handling race condition in the SSO middleware layer.', classifier: 'GrokClassifier' },
-  { ai_theme: 'Performance Degradation', ai_project_score: 88, ai_summary: 'System performance metrics indicate degradation beyond acceptable thresholds. Application response times have increased 340% from baseline, correlating with database connection pool exhaustion patterns.', ai_business_impact: 'User experience severely impacted with page load times exceeding 8 seconds. Customer satisfaction scores projected to drop 15 points if unresolved within SLA window.', ai_root_cause: 'Unoptimized database queries compounded by insufficient connection pool sizing.', classifier: 'GrokClassifier' },
-  { ai_theme: 'Security Incident', ai_project_score: 91, ai_summary: 'Potential security breach detected through anomalous API access patterns. Automated scanning activity identified targeting authentication endpoints with credential stuffing techniques.', ai_business_impact: 'Risk of unauthorized data access affecting compliance posture. Potential regulatory exposure under SOC 2 and GDPR frameworks if breach is confirmed.', ai_root_cause: 'Insufficient rate limiting and lack of behavioral anomaly detection on public API endpoints.', classifier: 'GrokClassifier' },
-  { ai_theme: 'Data Integrity Issue', ai_project_score: 87, ai_summary: 'Data consistency validation has detected discrepancies between primary and replica data stores. Affected records show timestamp drift and missing transaction entries during failover events.', ai_business_impact: 'Financial reporting accuracy compromised for Q1 close. Audit trail gaps may trigger compliance review and require manual reconciliation effort estimated at 40 person-hours.', ai_root_cause: 'Replication lag during automated failover combined with missing transaction journaling.', classifier: 'GrokClassifier' },
-];
+// ─── No mock data — live ServiceNow data only ──────────────────────────────────
 
 // ─── Colors & Styles ────────────────────────────────────────────────────────────
 
@@ -214,13 +191,10 @@ function SubmitPanel() {
         throw new Error('No sys_id returned');
       }
     } catch (err) {
-      console.warn('Falling back to demo response:', err.message);
-      setPollMsg('Using demo classification...');
-      await new Promise(r => setTimeout(r, 1500));
-      const mock = MOCK_CLASSIFICATIONS[Math.floor(Math.random() * MOCK_CLASSIFICATIONS.length)];
-      setResult({ ...mock });
-      setLoading(false);
+      console.warn('Submit failed:', err.message);
       setPollMsg('');
+      setResult({ error: true, message: 'Failed to submit incident. Please check the connection and try again.' });
+      setLoading(false);
     }
   };
 
@@ -281,7 +255,18 @@ function SubmitPanel() {
         </div>
       )}
 
-      {result && (
+      {result && result.error && (
+        <div style={{
+          marginTop: 24, padding: '16px 20px', background: 'rgba(231,76,60,0.08)',
+          borderLeft: `3px solid ${C.danger}`, borderRadius: '0 8px 8px 0',
+          animation: 'fadeUp 0.4s ease',
+        }}>
+          <div style={{ fontSize: 14, color: C.danger, fontWeight: 600, marginBottom: 4 }}>Error</div>
+          <div style={{ fontSize: 13, color: C.text }}>{result.message}</div>
+        </div>
+      )}
+
+      {result && !result.error && (
         <div style={{
           marginTop: 24, padding: 24, background: C.surface, borderRadius: 8,
           border: `1px solid ${C.border}`, animation: 'fadeUp 0.4s ease',
@@ -351,6 +336,12 @@ function ClustersPanel({ clusters }) {
         <StatCard label="High Impact" value={highImpact} color={C.warning} delay={0.1} />
       </div>
 
+      {sorted.length === 0 && (
+        <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary, fontSize: 14 }}>
+          No clusters found. Submit incidents to generate clusters.
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {sorted.map((cluster, i) => {
           const isOpen = expanded === i;
@@ -403,6 +394,11 @@ function SuggestionsPanel({ suggestions }) {
   return (
     <div>
       <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>Project Suggestions</h2>
+      {sorted.length === 0 && (
+        <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary, fontSize: 14 }}>
+          No project suggestions yet. Clusters need 5+ incidents to generate suggestions.
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {sorted.map((sug, i) => {
           const isOpen = expanded === i;
@@ -570,19 +566,10 @@ function UploadPanel({ onNavigate }) {
       setUploading(false);
       startPolling(tracker);
     } catch (err) {
-      console.warn('Bulk submit failed, using demo mode:', err.message);
-      setUploadProgress('Using demo mode...');
-      await new Promise(r => setTimeout(r, 2000));
-      const fakeResults = parsedRows.map((row, i) => ({
-        sys_id: `demo_${Date.now()}_${i}`,
-        short_description: row.short_description,
-        status: 'processing',
-        ai_theme: null,
-      }));
-      setUploadResults({ total: parsedRows.length, created: parsedRows.length, failed: 0 });
-      setPollTracker(fakeResults);
+      console.warn('Bulk submit failed:', err.message);
+      setUploadProgress('');
+      setUploadResults({ total: parsedRows.length, created: 0, failed: parsedRows.length, error: 'Failed to upload incidents. Please check the connection and try again.' });
       setUploading(false);
-      startDemoPolling(fakeResults);
     }
   };
 
@@ -625,34 +612,6 @@ function UploadPanel({ onNavigate }) {
       setTimeout(pollBatch, 3000);
     };
     setTimeout(pollBatch, 3000);
-  };
-
-  const startDemoPolling = (tracker) => {
-    setPolling(true);
-    let remaining = [...tracker];
-    let idx = 0;
-    const themes = MOCK_CLASSIFICATIONS.map(m => m.ai_theme);
-
-    const tick = () => {
-      if (idx >= remaining.length) {
-        setPolling(false);
-        setAllDone(true);
-        return;
-      }
-      const batchEnd = Math.min(idx + 3, remaining.length);
-      for (let i = idx; i < batchEnd; i++) {
-        remaining[i] = { ...remaining[i], status: 'classified', ai_theme: themes[i % themes.length] };
-      }
-      idx = batchEnd;
-      setPollTracker([...remaining]);
-      if (idx < remaining.length) {
-        setTimeout(tick, 2000);
-      } else {
-        setPolling(false);
-        setAllDone(true);
-      }
-    };
-    setTimeout(tick, 2000);
   };
 
   const themeDistribution = () => {
@@ -755,6 +714,16 @@ function UploadPanel({ onNavigate }) {
       {/* Upload results */}
       {uploadResults && (
         <div style={{ animation: 'fadeUp 0.4s ease', marginBottom: 24 }}>
+          {uploadResults.error && (
+            <div style={{
+              padding: '16px 20px', background: 'rgba(231,76,60,0.08)',
+              borderLeft: `3px solid ${C.danger}`, borderRadius: '0 8px 8px 0',
+              marginBottom: 20,
+            }}>
+              <div style={{ fontSize: 14, color: C.danger, fontWeight: 600, marginBottom: 4 }}>Upload Failed</div>
+              <div style={{ fontSize: 13, color: C.text }}>{uploadResults.error}</div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
             <StatCard label="Created" value={uploadResults.created} color={C.success} delay={0} />
             {uploadResults.failed > 0 && <StatCard label="Failed" value={uploadResults.failed} color={C.danger} delay={0.05} />}
@@ -844,8 +813,8 @@ function UploadPanel({ onNavigate }) {
 
 export default function App() {
   const [tab, setTab] = useState('overview');
-  const [clusters, setClusters] = useState(MOCK_CLUSTERS);
-  const [suggestions, setSuggestions] = useState(MOCK_SUGGESTIONS);
+  const [clusters, setClusters] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
