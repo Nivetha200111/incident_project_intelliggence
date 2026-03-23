@@ -471,8 +471,373 @@ function IconSubmit() {
 function IconClusters() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><line x1="7" y1="7" x2="9.5" y2="9.5"/><line x1="14.5" y1="9.5" x2="17" y2="7"/><line x1="7" y1="17" x2="9.5" y2="14.5"/><line x1="14.5" y1="14.5" x2="17" y2="17"/></svg>;
 }
+function IconUpload() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+}
 function IconProjects() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+}
+
+// ─── CSV Parser ─────────────────────────────────────────────────────────────────
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const fields = [];
+    let current = '';
+    let inQuotes = false;
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (inQuotes) {
+        if (ch === '"' && line[j + 1] === '"') { current += '"'; j++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { current += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { fields.push(current.trim()); current = ''; }
+        else { current += ch; }
+      }
+    }
+    fields.push(current.trim());
+    if (fields[0]) {
+      rows.push({ short_description: fields[0], detailed_description: fields[1] || '' });
+    }
+  }
+  return rows;
+}
+
+// ─── Upload Panel ───────────────────────────────────────────────────────────────
+
+function UploadPanel({ onNavigate }) {
+  const [parsedRows, setParsedRows] = useState([]);
+  const [fileName, setFileName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const [uploadResults, setUploadResults] = useState(null);
+  const [pollTracker, setPollTracker] = useState([]);
+  const [polling, setPolling] = useState(false);
+  const [allDone, setAllDone] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  const handleFile = (file) => {
+    if (!file || !file.name.endsWith('.csv')) return;
+    setFileName(file.name);
+    setUploadResults(null);
+    setPollTracker([]);
+    setAllDone(false);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rows = parseCSV(e.target.result);
+      setParsedRows(rows.slice(0, 50));
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    handleFile(file);
+  };
+
+  const handleUpload = async () => {
+    if (parsedRows.length === 0) return;
+    setUploading(true);
+    setUploadProgress(`Uploading ${parsedRows.length} incidents...`);
+
+    try {
+      const res = await fetch('/api/bulk-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incidents: parsedRows }),
+      });
+      if (!res.ok) throw new Error('Bulk submit failed');
+      const data = await res.json();
+      const results = data?.result || data;
+      const incidents = results?.incidents || [];
+      setUploadResults({ total: results.total || parsedRows.length, created: results.created || incidents.length, failed: results.failed || 0 });
+      const tracker = incidents.map(inc => ({
+        sys_id: inc.sys_id || inc.staging_id,
+        short_description: inc.short_description || '',
+        status: 'processing',
+        ai_theme: null,
+      }));
+      setPollTracker(tracker);
+      setUploading(false);
+      startPolling(tracker);
+    } catch (err) {
+      console.warn('Bulk submit failed, using demo mode:', err.message);
+      setUploadProgress('Using demo mode...');
+      await new Promise(r => setTimeout(r, 2000));
+      const fakeResults = parsedRows.map((row, i) => ({
+        sys_id: `demo_${Date.now()}_${i}`,
+        short_description: row.short_description,
+        status: 'processing',
+        ai_theme: null,
+      }));
+      setUploadResults({ total: parsedRows.length, created: parsedRows.length, failed: 0 });
+      setPollTracker(fakeResults);
+      setUploading(false);
+      startDemoPolling(fakeResults);
+    }
+  };
+
+  const startPolling = (tracker) => {
+    setPolling(true);
+    let remaining = [...tracker];
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    const pollBatch = async () => {
+      attempts++;
+      const pending = remaining.filter(r => r.status === 'processing');
+      if (pending.length === 0 || attempts > maxAttempts) {
+        setPolling(false);
+        setAllDone(true);
+        if (attempts > maxAttempts) {
+          setPollTracker(prev => prev.map(r => r.status === 'processing' ? { ...r, status: 'timeout' } : r));
+        }
+        return;
+      }
+      const batch = pending.slice(0, 5);
+      const results = await Promise.all(batch.map(async (item) => {
+        try {
+          const res = await fetch(`/api/poll-incident?sys_id=${item.sys_id}`);
+          const data = await res.json();
+          const record = data?.result;
+          if (record && record.ai_theme) {
+            return { ...item, status: 'classified', ai_theme: record.ai_theme };
+          }
+        } catch (err) {
+          console.warn('Poll failed for', item.sys_id);
+        }
+        return item;
+      }));
+      remaining = remaining.map(r => {
+        const updated = results.find(u => u.sys_id === r.sys_id);
+        return updated || r;
+      });
+      setPollTracker([...remaining]);
+      setTimeout(pollBatch, 3000);
+    };
+    setTimeout(pollBatch, 3000);
+  };
+
+  const startDemoPolling = (tracker) => {
+    setPolling(true);
+    let remaining = [...tracker];
+    let idx = 0;
+    const themes = MOCK_CLASSIFICATIONS.map(m => m.ai_theme);
+
+    const tick = () => {
+      if (idx >= remaining.length) {
+        setPolling(false);
+        setAllDone(true);
+        return;
+      }
+      const batchEnd = Math.min(idx + 3, remaining.length);
+      for (let i = idx; i < batchEnd; i++) {
+        remaining[i] = { ...remaining[i], status: 'classified', ai_theme: themes[i % themes.length] };
+      }
+      idx = batchEnd;
+      setPollTracker([...remaining]);
+      if (idx < remaining.length) {
+        setTimeout(tick, 2000);
+      } else {
+        setPolling(false);
+        setAllDone(true);
+      }
+    };
+    setTimeout(tick, 2000);
+  };
+
+  const themeDistribution = () => {
+    const dist = {};
+    pollTracker.filter(r => r.ai_theme).forEach(r => { dist[r.ai_theme] = (dist[r.ai_theme] || 0) + 1; });
+    const max = Math.max(...Object.values(dist), 1);
+    return Object.entries(dist).sort((a, b) => b[1] - a[1]).map(([theme, count]) => ({ theme, count, pct: (count / max) * 100 }));
+  };
+
+  const statusIcon = (s) => {
+    if (s === 'classified') return '\u2705';
+    if (s === 'timeout' || s === 'failed') return '\u274C';
+    return '\u23F3';
+  };
+
+  const dropZoneStyle = {
+    border: `2px dashed ${dragOver ? C.accent : C.border}`,
+    borderRadius: 8, padding: '40px 24px', textAlign: 'center',
+    background: dragOver ? C.accentDim : 'transparent',
+    transition: 'all 0.2s', cursor: 'pointer', marginBottom: 24,
+  };
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>Bulk CSV Upload</h2>
+
+      {/* Drop zone */}
+      <div
+        style={dropZoneStyle}
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }}
+          onChange={e => handleFile(e.target.files[0])} />
+        <div style={{ marginBottom: 12 }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.textSecondary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div style={{ fontSize: 14, color: C.text, fontWeight: 500, marginBottom: 4 }}>
+          {fileName ? fileName : 'Drop CSV file here or click to browse'}
+        </div>
+        <div style={{ fontSize: 12, color: C.textSecondary }}>
+          Format: short_description, detailed_description (max 50 rows)
+        </div>
+      </div>
+
+      {/* Preview table */}
+      {parsedRows.length > 0 && !uploadResults && (
+        <div style={{ animation: 'fadeUp 0.4s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.text }}>Preview</h3>
+              <Badge color={C.info}>{parsedRows.length} rows</Badge>
+            </div>
+          </div>
+          <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ display: 'flex', padding: '10px 16px', borderBottom: `1px solid ${C.border}`, background: C.bg }}>
+              <div style={{ width: 40, fontSize: 11, color: C.textSecondary, fontWeight: 600 }}>#</div>
+              <div style={{ flex: 1, fontSize: 11, color: C.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8 }}>Short Description</div>
+              <div style={{ flex: 1, fontSize: 11, color: C.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8 }}>Detailed Description</div>
+            </div>
+            {parsedRows.slice(0, 20).map((row, i) => (
+              <div key={i} style={{
+                display: 'flex', padding: '10px 16px', borderBottom: `1px solid ${C.border}`,
+                animation: `slideIn 0.3s ease ${i * 0.03}s both`,
+              }}>
+                <div style={{ width: 40, fontSize: 12, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>{i + 1}</div>
+                <div style={{ flex: 1, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
+                  {row.short_description.length > 60 ? row.short_description.slice(0, 60) + '...' : row.short_description}
+                </div>
+                <div style={{ flex: 1, fontSize: 13, color: C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {row.detailed_description.length > 80 ? row.detailed_description.slice(0, 80) + '...' : row.detailed_description}
+                </div>
+              </div>
+            ))}
+            {parsedRows.length > 20 && (
+              <div style={{ padding: '10px 16px', fontSize: 12, color: C.textSecondary, textAlign: 'center' }}>
+                + {parsedRows.length - 20} more rows
+              </div>
+            )}
+          </div>
+          <button onClick={handleUpload} disabled={uploading}
+            style={{
+              padding: '12px 28px', background: uploading ? C.accentDim : C.accent, color: '#fff',
+              border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: uploading ? 'wait' : 'pointer',
+              fontFamily: "'DM Sans', sans-serif", transition: 'all 0.3s',
+              animation: uploading ? 'glow 2s ease-in-out infinite' : 'none',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}
+          >
+            {uploading && <Spinner size={16} />}
+            {uploading ? uploadProgress : `Upload ${parsedRows.length} Incidents to Pipeline`}
+          </button>
+        </div>
+      )}
+
+      {/* Upload results */}
+      {uploadResults && (
+        <div style={{ animation: 'fadeUp 0.4s ease', marginBottom: 24 }}>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Created" value={uploadResults.created} color={C.success} delay={0} />
+            {uploadResults.failed > 0 && <StatCard label="Failed" value={uploadResults.failed} color={C.danger} delay={0.05} />}
+          </div>
+
+          {/* Poll tracker */}
+          {pollTracker.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.text }}>
+                  {polling ? 'Processing AI Classification...' : 'Classification Complete'}
+                </h3>
+                {polling && <Spinner size={16} />}
+              </div>
+              <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, overflow: 'hidden', marginBottom: 24 }}>
+                {pollTracker.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
+                    borderBottom: i < pollTracker.length - 1 ? `1px solid ${C.border}` : 'none',
+                    animation: `slideIn 0.3s ease ${i * 0.03}s both`,
+                  }}>
+                    <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{statusIcon(item.status)}</span>
+                    <span style={{ flex: 1, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.short_description.length > 50 ? item.short_description.slice(0, 50) + '...' : item.short_description}
+                    </span>
+                    {item.ai_theme ? (
+                      <Badge color={C.accent}>{item.ai_theme}</Badge>
+                    ) : (
+                      <span style={{ fontSize: 12, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>
+                        {item.status === 'timeout' ? 'Timed out' : 'Processing...'}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Theme distribution */}
+          {allDone && themeDistribution().length > 0 && (
+            <div style={{ animation: 'fadeUp 0.4s ease' }}>
+              <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Theme Distribution
+              </h3>
+              <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, padding: 20, marginBottom: 20 }}>
+                {themeDistribution().map((item, i) => (
+                  <div key={i} style={{ marginBottom: i < themeDistribution().length - 1 ? 14 : 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{item.theme}</span>
+                      <span style={{ fontSize: 12, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>{item.count}</span>
+                    </div>
+                    <div style={{ height: 6, background: C.bg, borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 3, transition: 'width 0.8s ease',
+                        background: `linear-gradient(90deg, ${C.accent}, ${C.info})`,
+                        width: `${item.pct}%`,
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 14, color: C.success, fontWeight: 600 }}>
+                  {pollTracker.filter(r => r.status === 'classified').length} incidents classified
+                </span>
+                <button onClick={() => onNavigate('clusters')}
+                  style={{
+                    padding: '8px 20px', background: 'transparent', color: C.accent,
+                    border: `1px solid ${C.accent}`, borderRadius: 6, fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.accentDim; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  View Clusters →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Main App ───────────────────────────────────────────────────────────────────
@@ -511,6 +876,7 @@ export default function App() {
   const navItems = [
     { key: 'overview', label: 'Overview', icon: <IconOverview /> },
     { key: 'submit', label: 'Submit', icon: <IconSubmit /> },
+    { key: 'upload', label: 'Upload', icon: <IconUpload /> },
     { key: 'clusters', label: 'Clusters', icon: <IconClusters /> },
     { key: 'projects', label: 'Projects', icon: <IconProjects /> },
   ];
@@ -578,6 +944,7 @@ export default function App() {
         <main style={{ marginLeft: 220, flex: 1, padding: '32px 40px', minHeight: '100vh' }}>
           {tab === 'overview' && <OverviewPanel clusters={clusters} suggestions={suggestions} />}
           {tab === 'submit' && <SubmitPanel />}
+          {tab === 'upload' && <UploadPanel onNavigate={setTab} />}
           {tab === 'clusters' && <ClustersPanel clusters={clusters} />}
           {tab === 'projects' && <SuggestionsPanel suggestions={suggestions} />}
         </main>
