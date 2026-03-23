@@ -108,7 +108,7 @@ function statusColor(s) {
 // ─── Panels ─────────────────────────────────────────────────────────────────────
 
 function OverviewPanel({ clusters, suggestions }) {
-  const totalIncidents = clusters.reduce((s, c) => s + (c.incident_count || 0), 0);
+  const totalIncidents = clusters.reduce((s, c) => s + (parseInt(c.incident_count) || 0), 0);
   const avgScore = clusters.length > 0 ? Math.round(totalIncidents / clusters.length * 8.5) : 0;
   const highImpact = clusters.filter(c => c.impact_level === 'High' || c.impact_level === 'Critical').length;
 
@@ -338,9 +338,9 @@ function SubmitPanel() {
 
 function ClustersPanel({ clusters }) {
   const [expanded, setExpanded] = useState(null);
-  const totalIncidents = clusters.reduce((s, c) => s + (c.incident_count || 0), 0);
+  const totalIncidents = clusters.reduce((s, c) => s + (parseInt(c.incident_count) || 0), 0);
   const highImpact = clusters.filter(c => c.impact_level === 'High' || c.impact_level === 'Critical').length;
-  const sorted = [...clusters].sort((a, b) => (b.incident_count || 0) - (a.incident_count || 0));
+  const sorted = [...clusters].sort((a, b) => (parseInt(b.incident_count) || 0) - (parseInt(a.incident_count) || 0));
 
   return (
     <div>
