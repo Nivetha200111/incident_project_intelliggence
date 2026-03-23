@@ -426,7 +426,7 @@ function SuggestionsPanel({ suggestions }) {
                     <Badge color={pc}>{sug.priority}</Badge>
                     <Badge color={sc}>{sug.status}</Badge>
                     <span style={{ fontSize: 12, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>
-                      {sug.support_count} incidents
+                      {sug.support_count ? `${sug.support_count} incidents` : sug.source_cluster || ''}
                     </span>
                   </div>
                 </div>
