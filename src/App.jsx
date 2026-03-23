@@ -857,12 +857,12 @@ export default function App() {
         ]);
         if (clusterRes.ok) {
           const cData = await clusterRes.json();
-          const clusterArr = cData?.result || cData?.results || cData;
+          const clusterArr = cData?.result?.clusters || cData?.result || cData?.results || cData;
           if (Array.isArray(clusterArr) && clusterArr.length > 0) setClusters(clusterArr);
         }
         if (sugRes.ok) {
           const sData = await sugRes.json();
-          const sugArr = sData?.result || sData?.results || sData;
+          const sugArr = sData?.result?.project_suggestions || sData?.result || sData?.results || sData;
           if (Array.isArray(sugArr) && sugArr.length > 0) setSuggestions(sugArr);
         }
       } catch (err) {
