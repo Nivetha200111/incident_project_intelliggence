@@ -152,4 +152,4 @@ short_description,detailed_description
 
 ## Author
 
-Built by **Nyra** — AI + ServiceNow systems engineer
+Built by **Nivetha** — AI + ServiceNow systems engineer
