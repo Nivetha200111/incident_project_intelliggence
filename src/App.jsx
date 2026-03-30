@@ -241,20 +241,41 @@ function PretextInline({ text, width = 140, fontSize = 13, lineHeight = 1.05, co
   return (
     <span ref={hostRef} style={{ display: 'block', width: '100%', maxWidth: width, overflow: 'visible' }}>
       {lines.map((line, index) => (
-        <span key={`${line.text}-${index}`} style={{
-          display: 'block',
-          fontSize,
-          lineHeight,
-          fontWeight: weight,
-          letterSpacing: uppercase ? '0.18em' : '-0.03em',
-          color,
-          fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
-          transform: `translateX(${index % 2 === 0 ? 0 : 2}px) rotate(${index % 2 === 0 ? -0.18 : 0.14}deg)`,
-          transformOrigin: 'left center',
-          textShadow: `0 0 16px ${accent}18`,
-          whiteSpace: 'pre-wrap',
-        }}>
-          {line.text}
+        <span key={`${line.text}-${index}`} style={{ display: 'block', position: 'relative' }}>
+          <span style={{
+            position: 'absolute',
+            inset: 0,
+            fontSize,
+            lineHeight,
+            fontWeight: weight,
+            letterSpacing: uppercase ? '0.18em' : '-0.03em',
+            color: accent,
+            opacity: 0.3,
+            fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
+            transform: `translateX(${index % 2 === 0 ? 2 : 4}px) translateY(${index % 2 === 0 ? 1 : -1}px) rotate(${index % 2 === 0 ? -0.8 : 0.6}deg)`,
+            transformOrigin: 'left center',
+            pointerEvents: 'none',
+            whiteSpace: 'pre-wrap',
+            filter: 'blur(0.2px)',
+          }}>
+            {line.text}
+          </span>
+          <span style={{
+            display: 'block',
+            position: 'relative',
+            fontSize,
+            lineHeight,
+            fontWeight: weight,
+            letterSpacing: uppercase ? '0.18em' : '-0.03em',
+            color,
+            fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
+            transform: `translateX(${index % 2 === 0 ? 0 : 2}px) rotate(${index % 2 === 0 ? -0.35 : 0.28}deg)`,
+            transformOrigin: 'left center',
+            textShadow: `0 0 16px ${accent}18`,
+            whiteSpace: 'pre-wrap',
+          }}>
+            {line.text}
+          </span>
         </span>
       ))}
     </span>
@@ -285,7 +306,7 @@ function StatCard({ label, value, color = C.accent, delay = 0 }) {
         opacity: hovered ? 1 : 0, transition: 'opacity 0.3s',
       }} />
       <div style={{ color: C.textSecondary, marginBottom: 10, maxWidth: 150 }}>
-        <PretextInline text={label} width={150} fontSize={10} lineHeight={1.15} color={C.textSecondary} accent={color} weight={600} uppercase mono />
+        <PretextInline text={label} width={150} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={color} weight={700} uppercase mono />
       </div>
       <div style={{ fontSize: 32, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace", transition: 'text-shadow 0.3s', textShadow: hovered ? `0 0 20px ${color}66` : 'none' }}>{value}</div>
     </div>
@@ -1248,7 +1269,7 @@ function ChartCard({ title, height = 230, children, delay = 0 }) {
       boxShadow: '0 18px 40px rgba(0,0,0,0.22)', backdropFilter: 'blur(16px)',
     }}>
       <div style={{ color: C.textSecondary, marginBottom: 14, maxWidth: 220 }}>
-        <PretextInline text={title} width={220} fontSize={11} lineHeight={1.15} color={C.textSecondary} accent={C.info} weight={600} uppercase mono />
+        <PretextInline text={title} width={240} fontSize={13} lineHeight={1.05} color={C.text} accent={C.info} weight={700} uppercase mono />
       </div>
       <div style={{ height, position: 'relative' }}>{children}</div>
     </div>
@@ -1637,9 +1658,9 @@ export default function App() {
                     <PretextInline
                       text={item.label}
                       width={120}
-                      fontSize={13}
+                      fontSize={14}
                       lineHeight={1.05}
-                      color={active ? C.accent : C.textSecondary}
+                      color={active ? C.text : C.textSecondary}
                       accent={active ? C.accent : C.info}
                       weight={active ? 700 : 600}
                     />
