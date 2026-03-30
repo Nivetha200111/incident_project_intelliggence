@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Bar, Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
 // ─── No mock data — live ServiceNow data only ──────────────────────────────────
 
@@ -590,6 +594,9 @@ function IconProjects() {
 function IconDemands() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
 }
+function IconAnalytics() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
+}
 
 // ─── CSV Parser ─────────────────────────────────────────────────────────────────
 
@@ -1091,6 +1098,281 @@ function DemandsPanel({ demands, isMock, loading }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ─── Analytics Panel ────────────────────────────────────────────────────────────
+
+const THEME_COLORS = {
+  'Performance Degradation': '#378ADD',
+  'Authentication Failure': '#1D9E75',
+  'Network Outage': '#D85A30',
+  'Application Error': '#534AB7',
+  'Data Integrity Issue': '#D4537E',
+  'Infrastructure Capacity': '#BA7517',
+  'Provisioning Request': '#639922',
+  'Security Incident': '#E24B4A',
+};
+
+const FUNNEL_COLORS = ['#378ADD', '#1D9E75', '#534AB7', '#D85A30'];
+
+function ChartCard({ title, height = 230, children, delay = 0 }) {
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, ${C.surface}, ${C.prussianDeep})`,
+      borderRadius: 12, border: `0.5px solid ${C.border}`,
+      padding: '18px 20px', animation: `fadeUp 0.5s ease ${delay}s both`,
+      boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+    }}>
+      <div style={{ fontSize: 14, color: C.textSecondary, fontWeight: 500, marginBottom: 14 }}>{title}</div>
+      <div style={{ height, position: 'relative' }}>{children}</div>
+    </div>
+  );
+}
+
+function CustomLegend({ items }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, display: 'inline-block', flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: C.textSecondary }}>{item.label}</span>
+          {item.value != null && <span style={{ fontSize: 11, color: C.text, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{item.value}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AnalyticsPanel({ loading }) {
+  const [analytics, setAnalytics] = useState(null);
+  const [isMock, setIsMock] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch('/api/analytics');
+        if (res.ok) {
+          const data = await res.json();
+          if (data._mock) setIsMock(true);
+          setAnalytics(data.result || data);
+        } else {
+          setError('Failed to load analytics');
+        }
+      } catch (err) {
+        setError('Failed to load analytics');
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
+  if (!analytics && !error) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
+        <Spinner size={24} />
+        <span style={{ color: C.textSecondary, fontSize: 14 }}>Loading analytics...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div style={{ padding: 40, color: C.danger, fontSize: 14 }}>{error}</div>;
+  }
+
+  const { summary, incidents_by_category, cluster_impact, confidence_distribution, demand_roi, pipeline_funnel } = analytics;
+
+  const gridLight = 'rgba(255,255,255,0.06)';
+  const tickColor = '#7D8699';
+
+  const baseScaleOpts = {
+    ticks: { color: tickColor, font: { size: 11, family: "'DM Sans', sans-serif" } },
+    grid: { color: gridLight, drawBorder: false },
+  };
+
+  // --- Incidents by Category (vertical bar) ---
+  const categoryData = {
+    labels: incidents_by_category.map(d => d.theme.split(' ').slice(0, 2).join(' ')),
+    datasets: [{
+      data: incidents_by_category.map(d => d.count),
+      backgroundColor: incidents_by_category.map(d => THEME_COLORS[d.theme] || '#378ADD'),
+      borderRadius: 4, barPercentage: 0.65,
+    }],
+  };
+  const categoryOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { title: (ctx) => incidents_by_category[ctx[0].dataIndex]?.theme } } },
+    scales: { x: { ...baseScaleOpts }, y: { ...baseScaleOpts, beginAtZero: true } },
+  };
+
+  // --- Cluster Impact (grouped bar) ---
+  const impactMap = { Low: 1, Medium: 2, High: 3, Critical: 4 };
+  const clusterImpactData = {
+    labels: cluster_impact.map(d => d.theme.split(' ').slice(0, 2).join(' ')),
+    datasets: [
+      {
+        label: 'Incidents',
+        data: cluster_impact.map(d => d.incident_count),
+        backgroundColor: '#378ADD',
+        borderRadius: 4, barPercentage: 0.7,
+      },
+      {
+        label: 'Impact Level',
+        data: cluster_impact.map(d => impactMap[d.impact_level] || 0),
+        backgroundColor: '#D85A30',
+        borderRadius: 4, barPercentage: 0.7,
+      },
+    ],
+  };
+  const clusterImpactOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: {
+        title: (ctx) => cluster_impact[ctx[0].dataIndex]?.theme,
+        label: (ctx) => {
+          if (ctx.datasetIndex === 1) {
+            const labels = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical' };
+            return `Impact: ${labels[ctx.raw] || ctx.raw}`;
+          }
+          return `Incidents: ${ctx.raw}`;
+        },
+      },
+    }},
+    scales: {
+      x: { ...baseScaleOpts },
+      y: { ...baseScaleOpts, beginAtZero: true },
+    },
+  };
+
+  // --- Confidence Distribution (doughnut) ---
+  const confTotal = confidence_distribution.high + confidence_distribution.medium + confidence_distribution.low;
+  const confData = {
+    labels: ['High (>80%)', 'Medium (60-80%)', 'Low (<60%)'],
+    datasets: [{
+      data: [confidence_distribution.high, confidence_distribution.medium, confidence_distribution.low],
+      backgroundColor: ['#1D9E75', '#BA7517', '#E24B4A'],
+      borderWidth: 0,
+    }],
+  };
+  const confOpts = {
+    responsive: true, maintainAspectRatio: false, cutout: '65%',
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw / confTotal * 100)}%)` },
+    }},
+  };
+
+  // --- Demand ROI (horizontal bar) ---
+  const roiData = {
+    labels: demand_roi.map(d => d.name.replace(/ — Remediation Initiative/, '')),
+    datasets: [{
+      data: demand_roi.map(d => d.estimated_roi),
+      backgroundColor: demand_roi.map((d) => {
+        const cat = d.name.split(' — ')[0];
+        return THEME_COLORS[cat] || '#378ADD';
+      }),
+      borderRadius: 4, barPercentage: 0.65,
+    }],
+  };
+  const roiOpts = {
+    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: (ctx) => `$${ctx.raw.toLocaleString()}` },
+    }},
+    scales: {
+      x: { ...baseScaleOpts, ticks: { ...baseScaleOpts.ticks, callback: (v) => `$${v.toLocaleString()}` } },
+      y: { ...baseScaleOpts, ticks: { ...baseScaleOpts.ticks, font: { size: 10 } } },
+    },
+  };
+
+  // --- Pipeline Funnel (bar) ---
+  const funnelData = {
+    labels: ['Incidents', 'Clusters', 'Suggestions', 'Demands'],
+    datasets: [{
+      data: [pipeline_funnel.incidents, pipeline_funnel.clusters, pipeline_funnel.suggestions, pipeline_funnel.demands],
+      backgroundColor: FUNNEL_COLORS,
+      borderRadius: 4, barPercentage: 0.55,
+    }],
+  };
+  const funnelOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {} },
+    scales: {
+      x: { ...baseScaleOpts },
+      y: { ...baseScaleOpts, beginAtZero: true },
+    },
+  };
+
+  const metricCards = [
+    { label: 'Total Incidents', value: summary.total_incidents, color: '#378ADD' },
+    { label: 'Active Clusters', value: summary.total_clusters, color: '#1D9E75' },
+    { label: 'Demands Generated', value: summary.total_demands, color: '#534AB7' },
+    { label: 'Avg AI Confidence', value: `${summary.avg_confidence}%`, color: '#BA7517' },
+  ];
+
+  return (
+    <div style={{ animation: 'fadeUp 0.5s ease both' }}>
+      {isMock && (
+        <div style={{
+          background: 'rgba(186,117,23,0.12)', border: '1px solid rgba(186,117,23,0.3)',
+          borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 13,
+          color: '#BA7517', fontFamily: "'IBM Plex Mono', monospace",
+          animation: 'fadeUp 0.3s ease both',
+        }}>
+          Showing sample data — ServiceNow instance is hibernated
+        </div>
+      )}
+
+      {/* Summary Metric Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+        {metricCards.map((m, i) => (
+          <StatCard key={m.label} label={m.label} value={m.value} color={m.color} delay={i * 0.08} />
+        ))}
+      </div>
+
+      {/* Row 2: Incidents by Category + Cluster Impact */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <ChartCard title="Incidents by Category" delay={0.1}>
+          <Bar data={categoryData} options={categoryOpts} />
+          <CustomLegend items={incidents_by_category.map(d => ({ color: THEME_COLORS[d.theme], label: d.theme, value: d.count }))} />
+        </ChartCard>
+        <ChartCard title="Cluster Impact Escalation" delay={0.15}>
+          <Bar data={clusterImpactData} options={clusterImpactOpts} />
+          <CustomLegend items={[{ color: '#378ADD', label: 'Incidents' }, { color: '#D85A30', label: 'Impact Level (1-4)' }]} />
+        </ChartCard>
+      </div>
+
+      {/* Row 3: Confidence Distribution + ROI */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <ChartCard title="AI Confidence Distribution" height={240} delay={0.2}>
+          <div style={{ position: 'relative', height: '100%' }}>
+            <Doughnut data={confData} options={confOpts} />
+            <div style={{
+              position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%, -50%)',
+              textAlign: 'center', pointerEvents: 'none',
+            }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.text, fontFamily: "'IBM Plex Mono', monospace" }}>{summary.avg_confidence}%</div>
+              <div style={{ fontSize: 10, color: C.textSecondary, marginTop: 2 }}>avg confidence</div>
+            </div>
+          </div>
+          <CustomLegend items={[
+            { color: '#1D9E75', label: 'High (>80%)', value: confidence_distribution.high },
+            { color: '#BA7517', label: 'Medium', value: confidence_distribution.medium },
+            { color: '#E24B4A', label: 'Low (<60%)', value: confidence_distribution.low },
+          ]} />
+        </ChartCard>
+        <ChartCard title="Estimated ROI by Demand" height={240} delay={0.25}>
+          <Bar data={roiData} options={roiOpts} />
+        </ChartCard>
+      </div>
+
+      {/* Row 4: Pipeline Funnel */}
+      <ChartCard title="Pipeline Compression Funnel" height={180} delay={0.3}>
+        <Bar data={funnelData} options={funnelOpts} />
+        <CustomLegend items={['Incidents', 'Clusters', 'Suggestions', 'Demands'].map((label, i) => ({
+          color: FUNNEL_COLORS[i], label, value: [pipeline_funnel.incidents, pipeline_funnel.clusters, pipeline_funnel.suggestions, pipeline_funnel.demands][i],
+        }))} />
+      </ChartCard>
     </div>
   );
 }
