@@ -1282,10 +1282,89 @@ function CustomLegend({ items }) {
       {items.map((item, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, display: 'inline-block', flexShrink: 0 }} />
-          <span style={{ fontSize: 11, color: C.textSecondary }}>{item.label}</span>
+          <span style={{ minWidth: 0, maxWidth: 180 }}>
+            <PretextInline text={item.label} width={180} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={item.color || C.info} weight={600} />
+          </span>
           {item.value != null && <span style={{ fontSize: 11, color: C.text, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{item.value}</span>}
         </div>
       ))}
+    </div>
+  );
+}
+
+function getNiceStep(maxValue, targetSteps = 4) {
+  if (!maxValue || maxValue <= 0) return 1;
+  const rough = maxValue / targetSteps;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const normalized = rough / magnitude;
+  const niceBase = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return niceBase * magnitude;
+}
+
+function buildTicks(maxValue, targetSteps = 4) {
+  const step = getNiceStep(maxValue, targetSteps);
+  const upper = Math.max(step, Math.ceil(maxValue / step) * step);
+  const ticks = [];
+  for (let value = 0; value <= upper; value += step) ticks.push(value);
+  return ticks;
+}
+
+function VerticalAxisChart({ chart, labels, ticks, tickFormatter = (value) => value, labelWidth = 80, bottomHeight = 58 }) {
+  return (
+    <div style={{ height: '100%', display: 'grid', gridTemplateColumns: '42px minmax(0, 1fr)', gridTemplateRows: `minmax(0, 1fr) ${bottomHeight}px`, gap: 0 }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column-reverse', justifyContent: 'space-between',
+        padding: '4px 8px 8px 0', borderRight: `1px solid ${C.border}`,
+      }}>
+        {ticks.map((tick) => (
+          <div key={tick} style={{ textAlign: 'right' }}>
+            <PretextInline text={String(tickFormatter(tick))} width={34} fontSize={10} lineHeight={1} color={C.textSecondary} accent={C.info} weight={600} mono />
+          </div>
+        ))}
+      </div>
+      <div style={{ minWidth: 0, minHeight: 0, paddingLeft: 10 }}>{chart}</div>
+      <div />
+      <div style={{
+        display: 'grid', gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))`,
+        alignItems: 'start', gap: 0, padding: '10px 0 0 10px',
+      }}>
+        {labels.map((label, index) => (
+          <div key={`${label}-${index}`} style={{ display: 'flex', justifyContent: 'center', overflow: 'visible' }}>
+            <div style={{ width: labelWidth, transform: 'rotate(-24deg)', transformOrigin: 'top center' }}>
+              <PretextInline text={label} width={labelWidth} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={C.info} weight={600} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HorizontalAxisChart({ chart, labels, ticks, tickFormatter = (value) => value, leftWidth = 168 }) {
+  return (
+    <div style={{ height: '100%', display: 'grid', gridTemplateColumns: `${leftWidth}px minmax(0, 1fr)`, gridTemplateRows: 'minmax(0, 1fr) 34px', gap: 0 }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-around',
+        alignItems: 'flex-end', padding: '8px 12px 18px 0', borderRight: `1px solid ${C.border}`,
+      }}>
+        {labels.map((label, index) => (
+          <div key={`${label}-${index}`} style={{ width: leftWidth - 20, textAlign: 'right' }}>
+            <PretextInline text={label} width={leftWidth - 20} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={C.info} weight={600} />
+          </div>
+        ))}
+      </div>
+      <div style={{ minWidth: 0, minHeight: 0, paddingLeft: 10 }}>{chart}</div>
+      <div />
+      <div style={{
+        display: 'grid', gridTemplateColumns: `repeat(${ticks.length}, minmax(0, 1fr))`,
+        padding: '8px 0 0 10px', borderTop: `1px solid ${C.border}`,
+      }}>
+        {ticks.map((tick) => (
+          <div key={tick} style={{ textAlign: 'center' }}>
+            <PretextInline text={String(tickFormatter(tick))} width={64} fontSize={10} lineHeight={1} color={C.textSecondary} accent={C.info} weight={600} mono />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1348,7 +1427,10 @@ function AnalyticsPanel({ loading }) {
   const categoryOpts = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { callbacks: { title: (ctx) => incidents_by_category[ctx[0].dataIndex]?.theme } } },
-    scales: { x: { ...baseScaleOpts }, y: { ...baseScaleOpts, beginAtZero: true } },
+    scales: {
+      x: { ...baseScaleOpts, ticks: { display: false }, grid: { ...baseScaleOpts.grid, display: false } },
+      y: { ...baseScaleOpts, beginAtZero: true, ticks: { display: false } },
+    },
   };
 
   // --- Cluster Impact (grouped bar) ---
@@ -1385,8 +1467,8 @@ function AnalyticsPanel({ loading }) {
       },
     }},
     scales: {
-      x: { ...baseScaleOpts },
-      y: { ...baseScaleOpts, beginAtZero: true },
+      x: { ...baseScaleOpts, ticks: { display: false }, grid: { ...baseScaleOpts.grid, display: false } },
+      y: { ...baseScaleOpts, beginAtZero: true, ticks: { display: false } },
     },
   };
 
@@ -1425,8 +1507,8 @@ function AnalyticsPanel({ loading }) {
       callbacks: { label: (ctx) => `$${ctx.raw.toLocaleString()}` },
     }},
     scales: {
-      x: { ...baseScaleOpts, ticks: { ...baseScaleOpts.ticks, callback: (v) => `$${v.toLocaleString()}` } },
-      y: { ...baseScaleOpts, ticks: { ...baseScaleOpts.ticks, font: { size: 10 } } },
+      x: { ...baseScaleOpts, ticks: { display: false } },
+      y: { ...baseScaleOpts, ticks: { display: false }, grid: { ...baseScaleOpts.grid, display: false } },
     },
   };
 
@@ -1443,10 +1525,15 @@ function AnalyticsPanel({ loading }) {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: {} },
     scales: {
-      x: { ...baseScaleOpts },
-      y: { ...baseScaleOpts, beginAtZero: true },
+      x: { ...baseScaleOpts, ticks: { display: false }, grid: { ...baseScaleOpts.grid, display: false } },
+      y: { ...baseScaleOpts, beginAtZero: true, ticks: { display: false } },
     },
   };
+
+  const categoryTicks = buildTicks(Math.max(...incidents_by_category.map((d) => d.count), 0));
+  const clusterImpactTicks = buildTicks(Math.max(...cluster_impact.map((d) => Math.max(d.incident_count, impactMap[d.impact_level] || 0)), 0));
+  const roiTicks = buildTicks(Math.max(...demand_roi.map((d) => d.estimated_roi), 0));
+  const funnelTicks = buildTicks(Math.max(pipeline_funnel.incidents, pipeline_funnel.clusters, pipeline_funnel.suggestions, pipeline_funnel.demands, 0));
 
   const metricCards = [
     { label: 'Total Incidents', value: summary.total_incidents, color: '#378ADD' },
@@ -1479,11 +1566,19 @@ function AnalyticsPanel({ loading }) {
       {/* Row 2: Incidents by Category + Cluster Impact */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <ChartCard title="Incidents by Category" delay={0.1}>
-          <Bar data={categoryData} options={categoryOpts} />
+          <VerticalAxisChart
+            labels={incidents_by_category.map((d) => d.theme)}
+            ticks={categoryTicks}
+            chart={<Bar data={categoryData} options={categoryOpts} />}
+          />
           <CustomLegend items={incidents_by_category.map(d => ({ color: THEME_COLORS[d.theme], label: d.theme, value: d.count }))} />
         </ChartCard>
         <ChartCard title="Cluster Impact Escalation" delay={0.15}>
-          <Bar data={clusterImpactData} options={clusterImpactOpts} />
+          <VerticalAxisChart
+            labels={cluster_impact.map((d) => d.theme)}
+            ticks={clusterImpactTicks}
+            chart={<Bar data={clusterImpactData} options={clusterImpactOpts} />}
+          />
           <CustomLegend items={[{ color: '#378ADD', label: 'Incidents' }, { color: '#D85A30', label: 'Impact Level (1-4)' }]} />
         </ChartCard>
       </div>
@@ -1508,13 +1603,29 @@ function AnalyticsPanel({ loading }) {
           ]} />
         </ChartCard>
         <ChartCard title="Estimated ROI by Demand" height={240} delay={0.25}>
-          <Bar data={roiData} options={roiOpts} />
+          <HorizontalAxisChart
+            labels={demand_roi.map((d) => d.name.replace(/ â€” Remediation Initiative/, ''))}
+            ticks={roiTicks}
+            tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
+            chart={<Bar data={roiData} options={roiOpts} />}
+          />
+          <CustomLegend items={demand_roi.map((d) => ({
+            color: THEME_COLORS[d.name.split(' â€” ')[0]] || '#378ADD',
+            label: d.name.replace(/ â€” Remediation Initiative/, ''),
+            value: `$${d.estimated_roi.toLocaleString()}`,
+          }))} />
         </ChartCard>
       </div>
 
       {/* Row 4: Pipeline Funnel */}
       <ChartCard title="Pipeline Compression Funnel" height={180} delay={0.3}>
-        <Bar data={funnelData} options={funnelOpts} />
+        <VerticalAxisChart
+          labels={['Incidents', 'Clusters', 'Suggestions', 'Demands']}
+          ticks={funnelTicks}
+          chart={<Bar data={funnelData} options={funnelOpts} />}
+          labelWidth={92}
+          bottomHeight={46}
+        />
         <CustomLegend items={['Incidents', 'Clusters', 'Suggestions', 'Demands'].map((label, i) => ({
           color: FUNNEL_COLORS[i], label, value: [pipeline_funnel.incidents, pipeline_funnel.clusters, pipeline_funnel.suggestions, pipeline_funnel.demands][i],
         }))} />
