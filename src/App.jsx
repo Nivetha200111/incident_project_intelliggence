@@ -305,9 +305,10 @@ function StatCard({ label, value, color = C.accent, delay = 0 }) {
         background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
         opacity: hovered ? 1 : 0, transition: 'opacity 0.3s',
       }} />
-      <div style={{ color: C.textSecondary, marginBottom: 10, maxWidth: 150 }}>
-        <PretextInline text={label} width={150} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={color} weight={700} uppercase mono />
-      </div>
+      <div style={{
+        fontSize: 10, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 2,
+        fontWeight: 600, marginBottom: 10, fontFamily: "'IBM Plex Mono', monospace",
+      }}>{label}</div>
       <div style={{ fontSize: 32, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace", transition: 'text-shadow 0.3s', textShadow: hovered ? `0 0 20px ${color}66` : 'none' }}>{value}</div>
     </div>
   );
@@ -1268,9 +1269,10 @@ function ChartCard({ title, height = 230, children, delay = 0 }) {
       padding: '18px 20px', animation: `fadeUp 0.5s ease ${delay}s both`,
       boxShadow: '0 18px 40px rgba(0,0,0,0.22)', backdropFilter: 'blur(16px)',
     }}>
-      <div style={{ color: C.textSecondary, marginBottom: 14, maxWidth: 220 }}>
-        <PretextInline text={title} width={240} fontSize={13} lineHeight={1.05} color={C.text} accent={C.info} weight={700} uppercase mono />
-      </div>
+      <div style={{
+        color: C.text, marginBottom: 14, maxWidth: 260, fontSize: 14, fontWeight: 700,
+        letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace",
+      }}>{title}</div>
       <div style={{ height, position: 'relative' }}>{children}</div>
     </div>
   );
@@ -1282,89 +1284,12 @@ function CustomLegend({ items }) {
       {items.map((item, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, maxWidth: 190 }}>
           <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, display: 'inline-block', flexShrink: 0 }} />
-          <span style={{ minWidth: 0, maxWidth: 168 }}>
-            <PretextInline text={item.label} width={180} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={item.color || C.info} weight={600} />
+          <span style={{ minWidth: 0, maxWidth: 168, fontSize: 12, lineHeight: 1.25, color: C.textSecondary }}>
+            {item.label}
           </span>
           {item.value != null && <span style={{ fontSize: 11, color: C.text, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{item.value}</span>}
         </div>
       ))}
-    </div>
-  );
-}
-
-function getNiceStep(maxValue, targetSteps = 4) {
-  if (!maxValue || maxValue <= 0) return 1;
-  const rough = maxValue / targetSteps;
-  const magnitude = 10 ** Math.floor(Math.log10(rough));
-  const normalized = rough / magnitude;
-  const niceBase = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
-  return niceBase * magnitude;
-}
-
-function buildTicks(maxValue, targetSteps = 4) {
-  const step = getNiceStep(maxValue, targetSteps);
-  const upper = Math.max(step, Math.ceil(maxValue / step) * step);
-  const ticks = [];
-  for (let value = 0; value <= upper; value += step) ticks.push(value);
-  return ticks;
-}
-
-function VerticalAxisChart({ chart, labels, ticks, tickFormatter = (value) => value, labelWidth = 88, bottomHeight = 78 }) {
-  return (
-    <div style={{ height: '100%', display: 'grid', gridTemplateColumns: '42px minmax(0, 1fr)', gridTemplateRows: `minmax(0, 1fr) ${bottomHeight}px`, gap: 0 }}>
-      <div style={{
-        display: 'flex', flexDirection: 'column-reverse', justifyContent: 'space-between',
-        padding: '4px 8px 8px 0', borderRight: `1px solid ${C.border}`,
-      }}>
-        {ticks.map((tick) => (
-          <div key={tick} style={{ textAlign: 'right' }}>
-            <PretextInline text={String(tickFormatter(tick))} width={34} fontSize={10} lineHeight={1} color={C.textSecondary} accent={C.info} weight={600} mono />
-          </div>
-        ))}
-      </div>
-      <div style={{ minWidth: 0, minHeight: 0, paddingLeft: 10 }}>{chart}</div>
-      <div />
-      <div style={{
-        display: 'grid', gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))`,
-        alignItems: 'start', gap: 0, padding: '10px 0 0 10px',
-      }}>
-        {labels.map((label, index) => (
-          <div key={`${label}-${index}`} style={{ display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
-            <div style={{ width: labelWidth, textAlign: 'center' }}>
-              <PretextInline text={label} width={labelWidth} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={C.info} weight={600} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function HorizontalAxisChart({ chart, labels, ticks, tickFormatter = (value) => value, leftWidth = 168 }) {
-  return (
-    <div style={{ height: '100%', display: 'grid', gridTemplateColumns: `${leftWidth}px minmax(0, 1fr)`, gridTemplateRows: 'minmax(0, 1fr) 34px', gap: 0 }}>
-      <div style={{
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-around',
-        alignItems: 'flex-end', padding: '8px 12px 18px 0', borderRight: `1px solid ${C.border}`,
-      }}>
-        {labels.map((label, index) => (
-          <div key={`${label}-${index}`} style={{ width: leftWidth - 20, textAlign: 'right' }}>
-            <PretextInline text={label} width={leftWidth - 20} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={C.info} weight={600} />
-          </div>
-        ))}
-      </div>
-      <div style={{ minWidth: 0, minHeight: 0, paddingLeft: 10 }}>{chart}</div>
-      <div />
-      <div style={{
-        display: 'grid', gridTemplateColumns: `repeat(${ticks.length}, minmax(0, 1fr))`,
-        padding: '8px 0 0 10px', borderTop: `1px solid ${C.border}`,
-      }}>
-        {ticks.map((tick) => (
-          <div key={tick} style={{ textAlign: 'center' }}>
-            <PretextInline text={String(tickFormatter(tick))} width={64} fontSize={10} lineHeight={1} color={C.textSecondary} accent={C.info} weight={600} mono />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -1406,6 +1331,7 @@ function AnalyticsPanel({ loading }) {
   }
 
   const { summary, incidents_by_category, cluster_impact, confidence_distribution, demand_roi, pipeline_funnel } = analytics;
+  const cleanDemandName = (name = '') => name.split('Remediation Initiative')[0].replace(/[â€”—-]\s*$/, '').trim();
 
   const gridLight = 'rgba(255,255,255,0.06)';
   const tickColor = '#7D8699';
@@ -1530,10 +1456,62 @@ function AnalyticsPanel({ loading }) {
     },
   };
 
-  const categoryTicks = buildTicks(Math.max(...incidents_by_category.map((d) => d.count), 0));
-  const clusterImpactTicks = buildTicks(Math.max(...cluster_impact.map((d) => Math.max(d.incident_count, impactMap[d.impact_level] || 0)), 0));
-  const roiTicks = buildTicks(Math.max(...demand_roi.map((d) => d.estimated_roi), 0));
-  const funnelTicks = buildTicks(Math.max(pipeline_funnel.incidents, pipeline_funnel.clusters, pipeline_funnel.suggestions, pipeline_funnel.demands, 0));
+  const cleanCategoryOpts = {
+    ...categoryOpts,
+    scales: {
+      x: {
+        ...baseScaleOpts,
+        ticks: { color: tickColor, font: { size: 10, family: "'Space Grotesk', sans-serif" }, maxRotation: 24, minRotation: 24 },
+        grid: { ...baseScaleOpts.grid, display: false },
+      },
+      y: { ...baseScaleOpts, beginAtZero: true },
+    },
+  };
+
+  const cleanClusterImpactOpts = {
+    ...clusterImpactOpts,
+    scales: {
+      x: {
+        ...baseScaleOpts,
+        ticks: { color: tickColor, font: { size: 10, family: "'Space Grotesk', sans-serif" }, maxRotation: 24, minRotation: 24 },
+        grid: { ...baseScaleOpts.grid, display: false },
+      },
+      y: { ...baseScaleOpts, beginAtZero: true },
+    },
+  };
+
+  const cleanRoiLabels = demand_roi.map((d) => cleanDemandName(d.name));
+  const cleanRoiData = {
+    ...roiData,
+    labels: cleanRoiLabels,
+    datasets: [{
+      ...roiData.datasets[0],
+      backgroundColor: demand_roi.map((d) => THEME_COLORS[cleanDemandName(d.name)] || '#378ADD'),
+    }],
+  };
+
+  const cleanRoiOpts = {
+    ...roiOpts,
+    scales: {
+      x: {
+        ...baseScaleOpts,
+        ticks: { color: tickColor, font: { size: 10, family: "'IBM Plex Mono', monospace" }, callback: (value) => `$${Number(value).toLocaleString()}` },
+      },
+      y: {
+        ...baseScaleOpts,
+        grid: { ...baseScaleOpts.grid, display: false },
+        ticks: { color: tickColor, font: { size: 11, family: "'Space Grotesk', sans-serif" } },
+      },
+    },
+  };
+
+  const cleanFunnelOpts = {
+    ...funnelOpts,
+    scales: {
+      x: { ...baseScaleOpts, ticks: { color: tickColor, font: { size: 11, family: "'Space Grotesk', sans-serif" } }, grid: { ...baseScaleOpts.grid, display: false } },
+      y: { ...baseScaleOpts, beginAtZero: true },
+    },
+  };
 
   const metricCards = [
     { label: 'Total Incidents', value: summary.total_incidents, color: '#378ADD' },
@@ -1566,18 +1544,10 @@ function AnalyticsPanel({ loading }) {
       {/* Row 2: Incidents by Category + Cluster Impact */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         <ChartCard title="Incidents by Category" delay={0.1}>
-          <VerticalAxisChart
-            labels={incidents_by_category.map((d) => d.theme)}
-            ticks={categoryTicks}
-            chart={<Bar data={categoryData} options={categoryOpts} />}
-          />
+          <Bar data={categoryData} options={cleanCategoryOpts} />
         </ChartCard>
         <ChartCard title="Cluster Impact Escalation" delay={0.15}>
-          <VerticalAxisChart
-            labels={cluster_impact.map((d) => d.theme)}
-            ticks={clusterImpactTicks}
-            chart={<Bar data={clusterImpactData} options={clusterImpactOpts} />}
-          />
+          <Bar data={clusterImpactData} options={cleanClusterImpactOpts} />
           <CustomLegend items={[{ color: '#378ADD', label: 'Incidents' }, { color: '#D85A30', label: 'Impact Level (1-4)' }]} />
         </ChartCard>
       </div>
@@ -1602,27 +1572,19 @@ function AnalyticsPanel({ loading }) {
           ]} />
         </ChartCard>
         <ChartCard title="Estimated ROI by Demand" height={240} delay={0.25}>
-          <HorizontalAxisChart
+          <Bar data={cleanRoiData} options={cleanRoiOpts} />
+          {false && <HorizontalAxisChart
             labels={demand_roi.map((d) => d.name.replace(/ â€” Remediation Initiative/, ''))}
             ticks={roiTicks}
             tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
             chart={<Bar data={roiData} options={roiOpts} />}
-          />
+          />}
         </ChartCard>
       </div>
 
       {/* Row 4: Pipeline Funnel */}
       <ChartCard title="Pipeline Compression Funnel" height={180} delay={0.3}>
-        <VerticalAxisChart
-          labels={['Incidents', 'Clusters', 'Suggestions', 'Demands']}
-          ticks={funnelTicks}
-          chart={<Bar data={funnelData} options={funnelOpts} />}
-          labelWidth={92}
-          bottomHeight={58}
-        />
-        <CustomLegend items={['Incidents', 'Clusters', 'Suggestions', 'Demands'].map((label, i) => ({
-          color: FUNNEL_COLORS[i], label, value: [pipeline_funnel.incidents, pipeline_funnel.clusters, pipeline_funnel.suggestions, pipeline_funnel.demands][i],
-        }))} />
+        <Bar data={funnelData} options={cleanFunnelOpts} />
       </ChartCard>
     </div>
   );
@@ -1760,15 +1722,7 @@ export default function App() {
                 >
                   {item.icon}
                   <span style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                    <PretextInline
-                      text={item.label}
-                      width={120}
-                      fontSize={14}
-                      lineHeight={1.05}
-                      color={active ? C.text : C.textSecondary}
-                      accent={active ? C.accent : C.info}
-                      weight={active ? 700 : 600}
-                    />
+                    {item.label}
                   </span>
                 </button>
               );
