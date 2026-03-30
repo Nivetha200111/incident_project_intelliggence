@@ -1278,11 +1278,11 @@ function ChartCard({ title, height = 230, children, delay = 0 }) {
 
 function CustomLegend({ items }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', marginTop: 10, alignItems: 'flex-start' }}>
       {items.map((item, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, maxWidth: 190 }}>
           <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, display: 'inline-block', flexShrink: 0 }} />
-          <span style={{ minWidth: 0, maxWidth: 180 }}>
+          <span style={{ minWidth: 0, maxWidth: 168 }}>
             <PretextInline text={item.label} width={180} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={item.color || C.info} weight={600} />
           </span>
           {item.value != null && <span style={{ fontSize: 11, color: C.text, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{item.value}</span>}
@@ -1309,7 +1309,7 @@ function buildTicks(maxValue, targetSteps = 4) {
   return ticks;
 }
 
-function VerticalAxisChart({ chart, labels, ticks, tickFormatter = (value) => value, labelWidth = 80, bottomHeight = 58 }) {
+function VerticalAxisChart({ chart, labels, ticks, tickFormatter = (value) => value, labelWidth = 88, bottomHeight = 78 }) {
   return (
     <div style={{ height: '100%', display: 'grid', gridTemplateColumns: '42px minmax(0, 1fr)', gridTemplateRows: `minmax(0, 1fr) ${bottomHeight}px`, gap: 0 }}>
       <div style={{
@@ -1329,8 +1329,8 @@ function VerticalAxisChart({ chart, labels, ticks, tickFormatter = (value) => va
         alignItems: 'start', gap: 0, padding: '10px 0 0 10px',
       }}>
         {labels.map((label, index) => (
-          <div key={`${label}-${index}`} style={{ display: 'flex', justifyContent: 'center', overflow: 'visible' }}>
-            <div style={{ width: labelWidth, transform: 'rotate(-24deg)', transformOrigin: 'top center' }}>
+          <div key={`${label}-${index}`} style={{ display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ width: labelWidth, textAlign: 'center' }}>
               <PretextInline text={label} width={labelWidth} fontSize={11} lineHeight={1.05} color={C.textSecondary} accent={C.info} weight={600} />
             </div>
           </div>
@@ -1571,7 +1571,6 @@ function AnalyticsPanel({ loading }) {
             ticks={categoryTicks}
             chart={<Bar data={categoryData} options={categoryOpts} />}
           />
-          <CustomLegend items={incidents_by_category.map(d => ({ color: THEME_COLORS[d.theme], label: d.theme, value: d.count }))} />
         </ChartCard>
         <ChartCard title="Cluster Impact Escalation" delay={0.15}>
           <VerticalAxisChart
@@ -1609,11 +1608,6 @@ function AnalyticsPanel({ loading }) {
             tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
             chart={<Bar data={roiData} options={roiOpts} />}
           />
-          <CustomLegend items={demand_roi.map((d) => ({
-            color: THEME_COLORS[d.name.split(' â€” ')[0]] || '#378ADD',
-            label: d.name.replace(/ â€” Remediation Initiative/, ''),
-            value: `$${d.estimated_roi.toLocaleString()}`,
-          }))} />
         </ChartCard>
       </div>
 
@@ -1624,7 +1618,7 @@ function AnalyticsPanel({ loading }) {
           ticks={funnelTicks}
           chart={<Bar data={funnelData} options={funnelOpts} />}
           labelWidth={92}
-          bottomHeight={46}
+          bottomHeight={58}
         />
         <CustomLegend items={['Incidents', 'Clusters', 'Suggestions', 'Demands'].map((label, i) => ({
           color: FUNNEL_COLORS[i], label, value: [pipeline_funnel.incidents, pipeline_funnel.clusters, pipeline_funnel.suggestions, pipeline_funnel.demands][i],
