@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   try {
     const auth = Buffer.from(`${SN_USERNAME}:${SN_PASSWORD}`).toString('base64');
 
-    const url = `${SN_INSTANCE}/api/x_1809368_incide_0/incident_intelligence/analytics`;
+    const url = `${SN_INSTANCE}/api/x_1809368_incide_0/incident_intelligence_api/analytics`;
 
     const response = await fetch(url, {
       method: 'GET',

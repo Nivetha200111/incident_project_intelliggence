@@ -1426,6 +1426,7 @@ export default function App() {
     { key: 'clusters', label: 'Clusters', icon: <IconClusters /> },
     { key: 'projects', label: 'Projects', icon: <IconProjects /> },
     { key: 'demands', label: 'Demands', icon: <IconDemands /> },
+    { key: 'analytics', label: 'Analytics', icon: <IconAnalytics /> },
   ];
 
   return (
@@ -1518,6 +1519,7 @@ export default function App() {
           {tab === 'clusters' && <ClustersPanel clusters={clusters} />}
           {tab === 'projects' && <SuggestionsPanel suggestions={suggestions} />}
           {tab === 'demands' && <DemandsPanel demands={demands} isMock={demandsMock} loading={!dataLoaded} />}
+          {tab === 'analytics' && <AnalyticsPanel loading={!dataLoaded} />}
         </main>
       </div>
     </>
