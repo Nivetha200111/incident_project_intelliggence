@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="mintGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#20C9A0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#19656A;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="darkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#102647;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#102044;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Outer hexagon (white) -->
+  <polygon points="100,10 178,55 178,145 100,190 22,145 22,55" fill="white" stroke="none"/>
+  <!-- Inner hexagon (dark) -->
+  <polygon points="100,25 168,63 168,137 100,175 32,137 32,63" fill="url(#darkGrad)" stroke="none"/>
+  <!-- Chevron 1 (teal/mint - back) -->
+  <polyline points="75,70 55,100 75,130" fill="none" stroke="url(#mintGrad)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Chevron 2 (dark - middle) -->
+  <polyline points="95,70 75,100 95,130" fill="none" stroke="#102044" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Chevron 3 (dark - right) -->
+  <polyline points="115,70 95,100 115,130" fill="none" stroke="#102647" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arrow heads (right side) -->
+  <polyline points="125,70 145,100 125,130" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+  <polyline points="140,75 155,100 140,125" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/>
+</svg>

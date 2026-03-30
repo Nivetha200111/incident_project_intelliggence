@@ -1,34 +1,118 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 // ─── No mock data — live ServiceNow data only ──────────────────────────────────
 
 // ─── Colors & Styles ────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#1b1b2f',
-  surface: '#222240',
-  surfaceHover: '#2a2a50',
-  accent: '#5b5bd6',
-  accentDim: 'rgba(91,91,214,0.15)',
-  success: '#2ecc71',
+  bg: '#102044',
+  surface: '#102647',
+  surfaceHover: '#19656A',
+  accent: '#20C9A0',
+  accentDim: 'rgba(32,201,160,0.12)',
+  success: '#20C9A0',
   warning: '#f39c12',
   danger: '#e74c3c',
-  info: '#3498db',
-  text: '#e8e8f0',
-  textSecondary: '#9898b8',
-  border: 'rgba(255,255,255,0.06)',
+  info: '#3EADB5',
+  text: '#e8ecf0',
+  textSecondary: '#7D8699',
+  border: 'rgba(32,201,160,0.10)',
+  mint: '#20C9A0',
+  slate: '#7D8699',
+  teal: '#19656A',
+  prussian: '#102647',
+  prussianDeep: '#102044',
 };
 
 const fontImport = `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');`;
 
 const keyframes = `
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes glow {
-    0%, 100% { box-shadow: 0 0 8px rgba(91,91,214,0.4); }
-    50% { box-shadow: 0 0 24px rgba(91,91,214,0.8), 0 0 48px rgba(91,91,214,0.3); }
+    0%, 100% { box-shadow: 0 0 8px rgba(32,201,160,0.4); }
+    50% { box-shadow: 0 0 24px rgba(32,201,160,0.7), 0 0 48px rgba(32,201,160,0.25); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes borderGlow {
+    0%, 100% { border-color: rgba(32,201,160,0.10); }
+    50% { border-color: rgba(32,201,160,0.35); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes logoSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes ripple {
+    0% { box-shadow: 0 0 0 0 rgba(32,201,160,0.3); }
+    100% { box-shadow: 0 0 0 12px rgba(32,201,160,0); }
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes textGlow {
+    0%, 100% { text-shadow: 0 0 4px rgba(32,201,160,0.3); }
+    50% { text-shadow: 0 0 16px rgba(32,201,160,0.6), 0 0 32px rgba(32,201,160,0.2); }
+  }
+  @keyframes dashFlow {
+    to { stroke-dashoffset: -20; }
+  }
+  @keyframes orbitDot {
+    0% { transform: rotate(0deg) translateX(38px) rotate(0deg); }
+    100% { transform: rotate(360deg) translateX(38px) rotate(-360deg); }
+  }
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes typewriter {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+  @keyframes blink {
+    50% { border-color: transparent; }
+  }
+  @keyframes waveMove {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  @keyframes particleFloat {
+    0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; }
+    25% { transform: translateY(-20px) translateX(10px); opacity: 0.8; }
+    50% { transform: translateY(-10px) translateX(-5px); opacity: 0.6; }
+    75% { transform: translateY(-30px) translateX(15px); opacity: 0.3; }
+  }
+  @keyframes progressFill {
+    from { width: 0%; }
+    to { width: var(--target-width); }
+  }
+  @keyframes hexPulse {
+    0%, 100% { transform: scale(1); opacity: 0.3; }
+    50% { transform: scale(1.1); opacity: 0.6; }
+  }
+  @keyframes morphBlob {
+    0%, 100% { border-radius: 40% 60% 60% 40% / 60% 30% 70% 40%; }
+    25% { border-radius: 60% 40% 30% 70% / 40% 60% 70% 30%; }
+    50% { border-radius: 30% 70% 50% 50% / 50% 40% 60% 50%; }
+    75% { border-radius: 50% 50% 40% 60% / 70% 50% 30% 60%; }
   }
 `;
 
@@ -36,7 +120,8 @@ const keyframes = `
 
 function Spinner({ size = 20 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+      <circle cx="12" cy="12" r="10" stroke={C.teal} strokeWidth="3" fill="none" opacity="0.3" />
       <circle cx="12" cy="12" r="10" stroke={C.accent} strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
     </svg>
   );
@@ -45,21 +130,38 @@ function Spinner({ size = 20 }) {
 function Badge({ children, color = C.accent, bg }) {
   return (
     <span style={{
-      display: 'inline-block', padding: '2px 10px', borderRadius: 4, fontSize: 11,
+      display: 'inline-block', padding: '3px 10px', borderRadius: 6, fontSize: 11,
       fontFamily: "'IBM Plex Mono', monospace", fontWeight: 500, letterSpacing: 0.5,
-      color: color, background: bg || `${color}22`, border: `1px solid ${color}33`,
+      color: color, background: bg || `${color}18`, border: `1px solid ${color}30`,
+      transition: 'all 0.2s ease', backdropFilter: 'blur(4px)',
     }}>{children}</span>
   );
 }
 
 function StatCard({ label, value, color = C.accent, delay = 0 }) {
+  const [hovered, setHovered] = useState(false);
   return (
-    <div style={{
-      background: C.surface, borderRadius: 8, padding: '18px 22px', flex: '1 1 180px',
-      border: `1px solid ${C.border}`, animation: `fadeUp 0.5s ease ${delay}s both`,
-    }}>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: `linear-gradient(135deg, ${C.surface}, ${C.prussianDeep})`,
+        borderRadius: 12, padding: '20px 24px', flex: '1 1 180px',
+        border: `1px solid ${hovered ? color + '44' : C.border}`,
+        animation: `scaleIn 0.5s ease ${delay}s both`,
+        transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+        boxShadow: hovered ? `0 8px 24px rgba(32,201,160,0.15), 0 0 0 1px ${color}22` : '0 2px 8px rgba(0,0,0,0.2)',
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
+        opacity: hovered ? 1 : 0, transition: 'opacity 0.3s',
+      }} />
       <div style={{ fontSize: 11, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 600, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace" }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace", transition: 'text-shadow 0.3s', textShadow: hovered ? `0 0 20px ${color}66` : 'none' }}>{value}</div>
     </div>
   );
 }
@@ -93,11 +195,11 @@ function OverviewPanel({ clusters, suggestions, loading }) {
   const isConnected = clusterCount > 0 || suggestionCount > 0;
 
   const pipeline = [
-    { name: 'Grok AI Classifier', status: isConnected ? 'Active' : (loading ? 'Connecting...' : 'Unavailable'), color: isConnected ? C.success : (loading ? C.warning : C.danger) },
+    { name: 'Grok AI Classifier', status: isConnected ? 'Active' : (loading ? 'Connecting...' : 'Unavailable'), color: isConnected ? C.mint : (loading ? C.warning : C.danger) },
     { name: 'Keyword Fallback Engine', status: 'Standby', color: C.info },
-    { name: 'Confidence Gate', status: '70% threshold', color: C.success },
-    { name: 'Cluster Matching Engine', status: isConnected ? `${clusterCount} clusters` : (loading ? 'Loading...' : 'No data'), color: isConnected ? C.success : (loading ? C.warning : C.textSecondary) },
-    { name: 'Project Suggestion Engine', status: isConnected ? `${suggestionCount} active` : (loading ? 'Loading...' : 'No data'), color: isConnected ? C.success : (loading ? C.warning : C.textSecondary) },
+    { name: 'Confidence Gate', status: '70% threshold', color: C.mint },
+    { name: 'Cluster Matching Engine', status: isConnected ? `${clusterCount} clusters` : (loading ? 'Loading...' : 'No data'), color: isConnected ? C.mint : (loading ? C.warning : C.textSecondary) },
+    { name: 'Project Suggestion Engine', status: isConnected ? `${suggestionCount} active` : (loading ? 'Loading...' : 'No data'), color: isConnected ? C.mint : (loading ? C.warning : C.textSecondary) },
   ];
 
   return (
@@ -111,18 +213,22 @@ function OverviewPanel({ clusters, suggestions, loading }) {
       </div>
 
       <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Classification Pipeline</h3>
-      <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
+      <div style={{ background: `linear-gradient(180deg, ${C.surface}, ${C.prussianDeep})`, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
         {pipeline.map((item, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '14px 20px', borderBottom: i < pipeline.length - 1 ? `1px solid ${C.border}` : 'none',
-            animation: `slideIn 0.4s ease ${i * 0.06}s both`,
-          }}>
+            animation: `slideIn 0.5s ease ${i * 0.08}s both`,
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(32,201,160,0.04)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}`, animation: item.status === 'Active' ? 'ripple 2s ease-in-out infinite' : 'none' }} />
               <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{item.name}</span>
             </div>
-            <span style={{ fontSize: 12, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>{item.status}</span>
+            <span style={{ fontSize: 12, color: item.color, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 500 }}>{item.status}</span>
           </div>
         ))}
       </div>
@@ -291,7 +397,7 @@ function SubmitPanel() {
             <div style={{ height: 6, background: C.bg, borderRadius: 3, overflow: 'hidden' }}>
               <div style={{
                 height: '100%', borderRadius: 3,
-                background: `linear-gradient(90deg, ${C.accent}, ${C.success})`,
+                background: `linear-gradient(90deg, ${C.teal}, ${C.accent})`,
                 width: `${result.ai_project_score}%`, transition: 'width 1s ease',
               }} />
             </div>
@@ -311,7 +417,7 @@ function SubmitPanel() {
 
           {result.ai_root_cause && (
             <div style={{
-              padding: '14px 18px', background: 'rgba(91,91,214,0.08)', borderLeft: `3px solid ${C.accent}`,
+              padding: '14px 18px', background: 'rgba(32,201,160,0.06)', borderLeft: `3px solid ${C.accent}`,
               borderRadius: '0 6px 6px 0',
             }}>
               <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Root Cause</div>
@@ -353,17 +459,20 @@ function ClustersPanel({ clusters }) {
             <div key={i}
               onClick={() => setExpanded(isOpen ? null : i)}
               style={{
-                background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`,
-                cursor: 'pointer', transition: 'border-color 0.2s', overflow: 'hidden',
-                animation: `slideIn 0.4s ease ${i * 0.05}s both`,
+                background: `linear-gradient(135deg, ${C.surface}, ${C.prussianDeep})`, borderRadius: 12,
+                border: `1px solid ${isOpen ? C.accent + '33' : C.border}`,
+                cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'hidden',
+                animation: `fadeUp 0.5s ease ${i * 0.06}s both`,
+                boxShadow: isOpen ? `0 4px 20px rgba(32,201,160,0.1)` : '0 2px 8px rgba(0,0,0,0.15)',
               }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.accent + '44'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + '44'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = isOpen ? C.accent + '33' : C.border; e.currentTarget.style.transform = 'translateX(0)'; }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px' }}>
                 <div style={{
-                  width: 44, height: 44, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 44, height: 44, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: ic + '18', color: ic, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, fontSize: 16,
+                  border: `1px solid ${ic}22`, transition: 'transform 0.2s',
                 }}>{cluster.incident_count}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{cluster.theme}</div>
@@ -372,10 +481,10 @@ function ClustersPanel({ clusters }) {
                     <Badge color={C.textSecondary}>{cluster.recommendation_status}</Badge>
                   </div>
                 </div>
-                <div style={{ color: C.textSecondary, fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>▾</div>
+                <div style={{ color: C.textSecondary, fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>▾</div>
               </div>
               {isOpen && (
-                <div style={{ padding: '0 20px 16px', animation: 'fadeUp 0.3s ease' }}>
+                <div style={{ padding: '0 20px 16px', animation: 'slideDown 0.3s ease' }}>
                   <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>{cluster.summary}</div>
                 </div>
               )}
@@ -411,12 +520,14 @@ function SuggestionsPanel({ suggestions }) {
             <div key={i}
               onClick={() => setExpanded(isOpen ? null : i)}
               style={{
-                background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`,
-                cursor: 'pointer', transition: 'border-color 0.2s', overflow: 'hidden',
-                animation: `slideIn 0.4s ease ${i * 0.05}s both`,
+                background: `linear-gradient(135deg, ${C.surface}, ${C.prussianDeep})`, borderRadius: 12,
+                border: `1px solid ${isOpen ? C.accent + '33' : C.border}`,
+                cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'hidden',
+                animation: `fadeUp 0.5s ease ${i * 0.06}s both`,
+                boxShadow: isOpen ? `0 4px 20px rgba(32,201,160,0.1)` : '0 2px 8px rgba(0,0,0,0.15)',
               }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.accent + '44'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + '44'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = isOpen ? C.accent + '33' : C.border; e.currentTarget.style.transform = 'translateX(0)'; }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -429,23 +540,23 @@ function SuggestionsPanel({ suggestions }) {
                     </span>
                   </div>
                 </div>
-                <div style={{ color: C.textSecondary, fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>▾</div>
+                <div style={{ color: C.textSecondary, fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>▾</div>
               </div>
               {isOpen && (
-                <div style={{ padding: '0 20px 16px', animation: 'fadeUp 0.3s ease' }}>
+                <div style={{ padding: '0 20px 16px', animation: 'slideDown 0.3s ease' }}>
                   <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
                     <div style={{
-                      padding: '14px 18px', background: 'rgba(91,91,214,0.08)', borderLeft: `3px solid ${C.accent}`,
+                      padding: '14px 18px', background: 'rgba(32,201,160,0.06)', borderLeft: `3px solid ${C.accent}`,
                       borderRadius: '0 6px 6px 0',
                     }}>
                       <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Justification</div>
                       <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{sug.justification}</div>
                     </div>
                     <div style={{
-                      padding: '14px 18px', background: 'rgba(46,204,113,0.08)', borderLeft: `3px solid ${C.success}`,
+                      padding: '14px 18px', background: 'rgba(32,201,160,0.04)', borderLeft: `3px solid ${C.mint}`,
                       borderRadius: '0 6px 6px 0',
                     }}>
-                      <div style={{ fontSize: 11, color: C.success, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Expected Value</div>
+                      <div style={{ fontSize: 11, color: C.mint, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Expected Value</div>
                       <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{sug.expected_value}</div>
                     </div>
                   </div>
@@ -784,7 +895,7 @@ function UploadPanel({ onNavigate }) {
                     <div style={{ height: 6, background: C.bg, borderRadius: 3, overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', borderRadius: 3, transition: 'width 0.8s ease',
-                        background: `linear-gradient(90deg, ${C.accent}, ${C.info})`,
+                        background: `linear-gradient(90deg, ${C.teal}, ${C.accent})`,
                         width: `${item.pct}%`,
                       }} />
                     </div>
@@ -899,12 +1010,14 @@ function DemandsPanel({ demands, isMock, loading }) {
             <div key={demand.sys_id || i}
               onClick={() => setExpanded(isOpen ? null : i)}
               style={{
-                background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`,
-                cursor: 'pointer', transition: 'border-color 0.2s', overflow: 'hidden',
-                animation: `slideIn 0.4s ease ${i * 0.05}s both`,
+                background: `linear-gradient(135deg, ${C.surface}, ${C.prussianDeep})`, borderRadius: 12,
+                border: `1px solid ${isOpen ? C.accent + '33' : C.border}`,
+                cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'hidden',
+                animation: `fadeUp 0.5s ease ${i * 0.06}s both`,
+                boxShadow: isOpen ? `0 4px 20px rgba(32,201,160,0.1)` : '0 2px 8px rgba(0,0,0,0.15)',
               }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.accent + '44'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + '44'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = isOpen ? C.accent + '33' : C.border; e.currentTarget.style.transform = 'translateX(0)'; }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px' }}>
                 <div style={{
@@ -931,11 +1044,11 @@ function DemandsPanel({ demands, isMock, loading }) {
                 <div style={{ color: C.textSecondary, fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>▾</div>
               </div>
               {isOpen && (
-                <div style={{ padding: '0 20px 16px', animation: 'fadeUp 0.3s ease' }}>
+                <div style={{ padding: '0 20px 16px', animation: 'slideDown 0.3s ease' }}>
                   <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {demand.u_business_case && (
                       <div style={{
-                        padding: '14px 18px', background: 'rgba(91,91,214,0.08)', borderLeft: `3px solid ${C.accent}`,
+                        padding: '14px 18px', background: 'rgba(32,201,160,0.06)', borderLeft: `3px solid ${C.accent}`,
                         borderRadius: '0 6px 6px 0',
                       }}>
                         <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Business Case</div>
@@ -944,10 +1057,10 @@ function DemandsPanel({ demands, isMock, loading }) {
                     )}
                     {demand.u_value && (
                       <div style={{
-                        padding: '14px 18px', background: 'rgba(46,204,113,0.08)', borderLeft: `3px solid ${C.success}`,
+                        padding: '14px 18px', background: 'rgba(32,201,160,0.04)', borderLeft: `3px solid ${C.mint}`,
                         borderRadius: '0 6px 6px 0',
                       }}>
-                        <div style={{ fontSize: 11, color: C.success, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Expected Value / ROI</div>
+                        <div style={{ fontSize: 11, color: C.mint, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Expected Value / ROI</div>
                         <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{demand.u_value}</div>
                       </div>
                     )}
@@ -1039,43 +1152,65 @@ export default function App() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: ${C.bg}; color: ${C.text}; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: ${C.bg}; }
-        ::-webkit-scrollbar-thumb { background: ${C.accent}44; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: ${C.prussianDeep}; }
+        ::-webkit-scrollbar-thumb { background: ${C.accent}44; border-radius: 3px; transition: background 0.2s; }
+        ::-webkit-scrollbar-thumb:hover { background: ${C.accent}88; }
         ::selection { background: ${C.accent}44; }
+        button:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
       `}</style>
 
       <div style={{ display: 'flex', minHeight: '100vh' }}>
         {/* Sidebar */}
         <aside style={{
-          width: 220, background: C.surface, borderRight: `1px solid ${C.border}`,
+          width: 240, background: `linear-gradient(180deg, ${C.prussian}, ${C.prussianDeep})`,
+          borderRight: `1px solid ${C.border}`,
           display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 10,
+          boxShadow: '4px 0 24px rgba(0,0,0,0.3)',
         }}>
+          {/* Logo & Branding */}
           <div style={{ padding: '24px 20px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
               <div style={{
-                width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${C.accent}, #7b68ee)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-              }}>⚡</div>
-              <span style={{ fontSize: 17, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>Incident Intel</span>
+                width: 38, height: 38, borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: `linear-gradient(135deg, ${C.accent}, ${C.teal})`,
+                boxShadow: `0 4px 12px rgba(32,201,160,0.3)`,
+                animation: 'float 4s ease-in-out infinite',
+                overflow: 'hidden',
+              }}>
+                <img src="/logo.svg" alt="Logo" style={{ width: 28, height: 28 }} />
+              </div>
+              <div>
+                <span style={{ fontSize: 16, fontWeight: 700, color: C.text, letterSpacing: -0.3, display: 'block' }}>Incident Intel</span>
+                <span style={{ fontSize: 10, color: C.slate, fontFamily: "'IBM Plex Mono', monospace" }}>v2.0 · Grok Powered</span>
+              </div>
             </div>
-            <div style={{ fontSize: 11, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace", paddingLeft: 42 }}>v2.0 · Grok Powered</div>
           </div>
 
-          <nav style={{ flex: 1, padding: '8px 10px' }}>
-            {navItems.map(item => {
+          {/* Decorative line */}
+          <div style={{
+            height: 1, margin: '0 20px 8px',
+            background: `linear-gradient(90deg, transparent, ${C.accent}44, transparent)`,
+          }} />
+
+          <nav style={{ flex: 1, padding: '8px 12px' }}>
+            {navItems.map((item, idx) => {
               const active = tab === item.key;
               return (
                 <button key={item.key} onClick={() => setTab(item.key)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 14px',
-                    background: active ? C.accentDim : 'transparent', border: 'none',
+                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 16px',
+                    background: active ? `linear-gradient(90deg, ${C.accentDim}, transparent)` : 'transparent',
+                    border: 'none',
                     borderLeft: active ? `3px solid ${C.accent}` : '3px solid transparent',
-                    borderRadius: '0 6px 6px 0', cursor: 'pointer', color: active ? C.text : C.textSecondary,
+                    borderRadius: '0 8px 8px 0', cursor: 'pointer',
+                    color: active ? C.accent : C.textSecondary,
                     fontSize: 13, fontWeight: active ? 600 : 500, fontFamily: "'DM Sans', sans-serif",
-                    transition: 'all 0.15s', marginBottom: 2,
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', marginBottom: 2,
+                    animation: `slideIn 0.4s ease ${idx * 0.05}s both`,
                   }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = C.surfaceHover; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                  onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(32,201,160,0.06)'; e.currentTarget.style.color = C.text; e.currentTarget.style.paddingLeft = '20px'; } }}
+                  onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textSecondary; e.currentTarget.style.paddingLeft = '16px'; } }}
                 >
                   {item.icon}
                   {item.label}
@@ -1084,16 +1219,17 @@ export default function App() {
             })}
           </nav>
 
+          {/* Status bar */}
           <div style={{ padding: '16px 20px', borderTop: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.success, boxShadow: `0 0 6px ${C.success}` }} />
-              <span style={{ fontSize: 11, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>ServiceNow + Grok Pipeline</span>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.mint, boxShadow: `0 0 8px ${C.mint}`, animation: 'ripple 2.5s ease-in-out infinite' }} />
+              <span style={{ fontSize: 11, color: C.slate, fontFamily: "'IBM Plex Mono', monospace" }}>ServiceNow + Grok Pipeline</span>
             </div>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main style={{ marginLeft: 220, flex: 1, padding: '32px 40px', minHeight: '100vh' }}>
+        <main style={{ marginLeft: 240, flex: 1, padding: '32px 40px', minHeight: '100vh', animation: 'fadeUp 0.6s ease' }}>
           {tab === 'overview' && <OverviewPanel clusters={clusters} suggestions={suggestions} loading={!dataLoaded} />}
           {tab === 'submit' && <SubmitPanel />}
           {tab === 'upload' && <UploadPanel onNavigate={setTab} />}
