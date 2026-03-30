@@ -476,6 +476,9 @@ function IconUpload() {
 function IconProjects() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
 }
+function IconDemands() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
+}
 
 // ─── CSV Parser ─────────────────────────────────────────────────────────────────
 
@@ -812,20 +815,190 @@ function UploadPanel({ onNavigate }) {
   );
 }
 
+// ─── Demands Panel ──────────────────────────────────────────────────────────────
+
+function demandPriorityColor(p) {
+  if (!p) return C.textSecondary;
+  if (p === '1' || p.includes('Critical')) return C.danger;
+  if (p === '2' || p.includes('High')) return C.warning;
+  if (p === '3' || p.includes('Medium')) return C.info;
+  return C.success;
+}
+
+function demandPriorityLabel(p) {
+  if (!p) return 'Unknown';
+  if (p === '1') return 'Critical';
+  if (p === '2') return 'High';
+  if (p === '3') return 'Medium';
+  if (p === '4') return 'Low';
+  return p;
+}
+
+function demandStateColor(s) {
+  if (!s) return C.textSecondary;
+  const map = {
+    Draft: C.info, Submitted: C.warning, Screening: '#9b59b6',
+    Qualified: C.success, Approved: '#1a9c5a', Completed: C.textSecondary,
+    Rejected: C.danger, Deferred: '#d4a017',
+  };
+  return map[s] || C.textSecondary;
+}
+
+function DemandsPanel({ demands, isMock, loading }) {
+  const [expanded, setExpanded] = useState(null);
+
+  const totalDemands = demands.length;
+  const totalIncidents = demands.reduce((s, d) => s + (parseInt(d.u_incident_count) || 0), 0);
+  const avgConfidence = totalDemands > 0
+    ? Math.round(demands.reduce((s, d) => s + (parseFloat(d.u_ai_confidence) || 0), 0) / totalDemands)
+    : 0;
+  const categories = new Set(demands.map(d => d.u_category).filter(Boolean)).size;
+
+  const sorted = [...demands].sort((a, b) => {
+    const pA = parseInt(a.priority) || (a.priority || '').charCodeAt(0);
+    const pB = parseInt(b.priority) || (b.priority || '').charCodeAt(0);
+    return pA - pB;
+  });
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>SPM Demands</h2>
+
+      {isMock && (
+        <div style={{
+          padding: '10px 16px', marginBottom: 20, borderRadius: 6,
+          background: 'rgba(243,156,18,0.08)', border: `1px solid rgba(243,156,18,0.2)`,
+          fontSize: 12, color: C.warning, fontFamily: "'IBM Plex Mono', monospace",
+        }}>
+          ⚠ Mock data — ServiceNow unreachable
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
+        <StatCard label="Total Demands" value={loading ? '...' : totalDemands} color={C.accent} delay={0} />
+        <StatCard label="Supporting Incidents" value={loading ? '...' : totalIncidents} color={C.info} delay={0.05} />
+        <StatCard label="Avg AI Confidence" value={loading ? '...' : `${avgConfidence}%`} color={C.success} delay={0.1} />
+        <StatCard label="Categories" value={loading ? '...' : categories} color={C.warning} delay={0.15} />
+      </div>
+
+      {sorted.length === 0 && !loading && (
+        <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary, fontSize: 14 }}>
+          No demands found. Approve project suggestions to generate SPM demands.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {sorted.map((demand, i) => {
+          const isOpen = expanded === i;
+          const pc = demandPriorityColor(demand.priority);
+          const sc = demandStateColor(demand.state);
+          const confidence = parseFloat(demand.u_ai_confidence) || 0;
+          const confColor = confidence >= 70 ? C.success : C.warning;
+
+          return (
+            <div key={demand.sys_id || i}
+              onClick={() => setExpanded(isOpen ? null : i)}
+              style={{
+                background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`,
+                cursor: 'pointer', transition: 'border-color 0.2s', overflow: 'hidden',
+                animation: `slideIn 0.4s ease ${i * 0.05}s both`,
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = C.accent + '44'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px' }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: pc + '18', color: pc, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, fontSize: 14,
+                }}>{demand.u_incident_count || 0}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>{demand.number}</span>
+                    {demand.u_category && <Badge color={C.textSecondary}>{demand.u_category}</Badge>}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{demand.short_description}</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Badge color={pc}>{demandPriorityLabel(demand.priority)}</Badge>
+                    <Badge color={sc}>{demand.state || 'Unknown'}</Badge>
+                    <span style={{ fontSize: 12, color: C.textSecondary, fontFamily: "'IBM Plex Mono', monospace" }}>
+                      {demand.u_incident_count || 0} incidents
+                    </span>
+                    <span style={{ fontSize: 12, color: confColor, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
+                      {confidence}% confidence
+                    </span>
+                  </div>
+                </div>
+                <div style={{ color: C.textSecondary, fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>▾</div>
+              </div>
+              {isOpen && (
+                <div style={{ padding: '0 20px 16px', animation: 'fadeUp 0.3s ease' }}>
+                  <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {demand.u_business_case && (
+                      <div style={{
+                        padding: '14px 18px', background: 'rgba(91,91,214,0.08)', borderLeft: `3px solid ${C.accent}`,
+                        borderRadius: '0 6px 6px 0',
+                      }}>
+                        <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Business Case</div>
+                        <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{demand.u_business_case}</div>
+                      </div>
+                    )}
+                    {demand.u_value && (
+                      <div style={{
+                        padding: '14px 18px', background: 'rgba(46,204,113,0.08)', borderLeft: `3px solid ${C.success}`,
+                        borderRadius: '0 6px 6px 0',
+                      }}>
+                        <div style={{ fontSize: 11, color: C.success, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Expected Value / ROI</div>
+                        <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{demand.u_value}</div>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      {demand.u_type && (
+                        <div style={{ flex: '1 1 200px' }}>
+                          <div style={{ fontSize: 11, color: C.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Type</div>
+                          <div style={{ fontSize: 13, color: C.text, textTransform: 'capitalize' }}>{demand.u_type}</div>
+                        </div>
+                      )}
+                      {demand.u_categorization && (
+                        <div style={{ flex: '1 1 200px' }}>
+                          <div style={{ fontSize: 11, color: C.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Categorization</div>
+                          <div style={{ fontSize: 13, color: C.text, textTransform: 'capitalize' }}>{demand.u_categorization}</div>
+                        </div>
+                      )}
+                      {demand.sys_created_on && (
+                        <div style={{ flex: '1 1 200px' }}>
+                          <div style={{ fontSize: 11, color: C.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Created</div>
+                          <div style={{ fontSize: 13, color: C.text }}>{demand.sys_created_on}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ───────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [tab, setTab] = useState('overview');
   const [clusters, setClusters] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [demands, setDemands] = useState([]);
+  const [demandsMock, setDemandsMock] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [clusterRes, sugRes] = await Promise.all([
+        const [clusterRes, sugRes, demandRes] = await Promise.all([
           fetch('/api/clusters'),
           fetch('/api/suggestions'),
+          fetch('/api/demands'),
         ]);
         if (clusterRes.ok) {
           const cData = await clusterRes.json();
@@ -836,6 +1009,12 @@ export default function App() {
           const sData = await sugRes.json();
           const sugArr = sData?.result?.project_suggestions || sData?.result || sData?.results || sData;
           if (Array.isArray(sugArr) && sugArr.length > 0) setSuggestions(sugArr);
+        }
+        if (demandRes.ok) {
+          const dData = await demandRes.json();
+          if (dData._mock) setDemandsMock(true);
+          const demandArr = dData?.result || dData?.results || dData;
+          if (Array.isArray(demandArr) && demandArr.length > 0) setDemands(demandArr);
         }
       } catch (err) {
         console.warn('Using mock data — ServiceNow unavailable:', err.message);
@@ -851,6 +1030,7 @@ export default function App() {
     { key: 'upload', label: 'Upload', icon: <IconUpload /> },
     { key: 'clusters', label: 'Clusters', icon: <IconClusters /> },
     { key: 'projects', label: 'Projects', icon: <IconProjects /> },
+    { key: 'demands', label: 'Demands', icon: <IconDemands /> },
   ];
 
   return (
@@ -919,6 +1099,7 @@ export default function App() {
           {tab === 'upload' && <UploadPanel onNavigate={setTab} />}
           {tab === 'clusters' && <ClustersPanel clusters={clusters} />}
           {tab === 'projects' && <SuggestionsPanel suggestions={suggestions} />}
+          {tab === 'demands' && <DemandsPanel demands={demands} isMock={demandsMock} loading={!dataLoaded} />}
         </main>
       </div>
     </>
