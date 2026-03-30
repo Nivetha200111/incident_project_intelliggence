@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -9,26 +10,29 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Le
 // ─── Colors & Styles ────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#102044',
-  surface: '#102647',
-  surfaceHover: '#19656A',
-  accent: '#20C9A0',
-  accentDim: 'rgba(32,201,160,0.12)',
-  success: '#20C9A0',
-  warning: '#f39c12',
-  danger: '#e74c3c',
-  info: '#3EADB5',
-  text: '#e8ecf0',
-  textSecondary: '#7D8699',
-  border: 'rgba(32,201,160,0.10)',
-  mint: '#20C9A0',
-  slate: '#7D8699',
-  teal: '#19656A',
-  prussian: '#102647',
-  prussianDeep: '#102044',
+  bg: '#07111f',
+  surface: '#0d1a30',
+  surfaceHover: '#133459',
+  accent: '#74f2ce',
+  accentDim: 'rgba(116,242,206,0.14)',
+  success: '#74f2ce',
+  warning: '#ffb347',
+  danger: '#ff6b6b',
+  info: '#67b7ff',
+  text: '#edf4ff',
+  textSecondary: '#8e9db3',
+  border: 'rgba(116,242,206,0.12)',
+  mint: '#74f2ce',
+  slate: '#8e9db3',
+  teal: '#1d5b7c',
+  prussian: '#0b1730',
+  prussianDeep: '#050b16',
+  gold: '#ffd36e',
+  rose: '#ff8ea1',
+  panelGlow: 'rgba(103,183,255,0.15)',
 };
 
-const fontImport = `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');`;
+const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');`;
 
 const keyframes = `
   @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
@@ -118,6 +122,17 @@ const keyframes = `
     50% { border-radius: 30% 70% 50% 50% / 50% 40% 60% 50%; }
     75% { border-radius: 50% 50% 40% 60% / 70% 50% 30% 60%; }
   }
+  @keyframes grainDrift {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(-1%, 2%); }
+    50% { transform: translate(2%, -1%); }
+    75% { transform: translate(-2%, 1%); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes panelFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
 `;
 
 // ─── Utility Components ─────────────────────────────────────────────────────────
@@ -142,6 +157,110 @@ function Badge({ children, color = C.accent, bg }) {
   );
 }
 
+function PretextTitle({ text, width = 420, fontSize = 24, lineHeight = 1, color = C.text, accent = C.accent, align = 'left', eyebrow }) {
+  const hostRef = useRef(null);
+  const [measuredWidth, setMeasuredWidth] = useState(width);
+  const font = `700 ${fontSize}px "Space Grotesk"`;
+  const prepared = useMemo(() => prepareWithSegments(text, font), [text, font]);
+
+  useEffect(() => {
+    const node = hostRef.current;
+    if (!node) return;
+    const update = () => setMeasuredWidth(Math.max(140, Math.floor(node.clientWidth || width)));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [width]);
+
+  const lines = useMemo(() => {
+    const result = layoutWithLines(prepared, measuredWidth, Math.round(fontSize * lineHeight));
+    return result.lines.length ? result.lines : [{ text }];
+  }, [prepared, measuredWidth, fontSize, lineHeight, text]);
+
+  return (
+    <div ref={hostRef} style={{ width: '100%', maxWidth: width, marginBottom: 24 }}>
+      {eyebrow && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 12,
+          color: C.textSecondary, fontSize: 11, fontFamily: "'IBM Plex Mono', monospace",
+          textTransform: 'uppercase', letterSpacing: 2.2,
+        }}>
+          <span style={{ width: 24, height: 1, background: `linear-gradient(90deg, ${accent}, transparent)` }} />
+          {eyebrow}
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'center' ? 'center' : 'flex-start', gap: 2 }}>
+        {lines.map((line, index) => (
+          <span key={`${line.text}-${index}`} style={{
+            display: 'block',
+            fontSize,
+            fontWeight: 700,
+            lineHeight,
+            color,
+            textAlign: align,
+            letterSpacing: '-0.04em',
+            fontFamily: "'Space Grotesk', sans-serif",
+            transform: `translateX(${index % 2 === 0 ? 0 : 6}px) rotate(${index % 2 === 0 ? -0.35 : 0.25}deg)`,
+            textShadow: `0 0 24px ${accent}22`,
+            background: `linear-gradient(135deg, ${color}, ${accent})`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+            {line.text}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PretextInline({ text, width = 140, fontSize = 13, lineHeight = 1.05, color = C.text, accent = C.accent, weight = 600, uppercase = false, mono = false }) {
+  const hostRef = useRef(null);
+  const [measuredWidth, setMeasuredWidth] = useState(width);
+  const renderedText = uppercase ? text.toUpperCase() : text;
+  const family = mono ? '"IBM Plex Mono"' : '"Space Grotesk"';
+  const font = `${weight} ${fontSize}px ${family}`;
+  const prepared = useMemo(() => prepareWithSegments(renderedText, font), [renderedText, font]);
+
+  useEffect(() => {
+    const node = hostRef.current;
+    if (!node) return;
+    const update = () => setMeasuredWidth(Math.max(60, Math.floor(node.clientWidth || width)));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [width]);
+
+  const lines = useMemo(() => {
+    const result = layoutWithLines(prepared, measuredWidth, Math.round(fontSize * lineHeight));
+    return result.lines.length ? result.lines : [{ text: renderedText }];
+  }, [prepared, measuredWidth, fontSize, lineHeight, renderedText]);
+
+  return (
+    <span ref={hostRef} style={{ display: 'block', width: '100%', maxWidth: width, overflow: 'visible' }}>
+      {lines.map((line, index) => (
+        <span key={`${line.text}-${index}`} style={{
+          display: 'block',
+          fontSize,
+          lineHeight,
+          fontWeight: weight,
+          letterSpacing: uppercase ? '0.18em' : '-0.03em',
+          color,
+          fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
+          transform: `translateX(${index % 2 === 0 ? 0 : 2}px) rotate(${index % 2 === 0 ? -0.18 : 0.14}deg)`,
+          transformOrigin: 'left center',
+          textShadow: `0 0 16px ${accent}18`,
+          whiteSpace: 'pre-wrap',
+        }}>
+          {line.text}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function StatCard({ label, value, color = C.accent, delay = 0 }) {
   const [hovered, setHovered] = useState(false);
   return (
@@ -149,14 +268,15 @@ function StatCard({ label, value, color = C.accent, delay = 0 }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: `linear-gradient(135deg, ${C.surface}, ${C.prussianDeep})`,
-        borderRadius: 12, padding: '20px 24px', flex: '1 1 180px',
+        background: `linear-gradient(160deg, rgba(13,26,48,0.92), rgba(6,12,24,0.96))`,
+        borderRadius: 18, padding: '22px 24px', flex: '1 1 180px',
         border: `1px solid ${hovered ? color + '44' : C.border}`,
         animation: `scaleIn 0.5s ease ${delay}s both`,
         transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
-        boxShadow: hovered ? `0 8px 24px rgba(32,201,160,0.15), 0 0 0 1px ${color}22` : '0 2px 8px rgba(0,0,0,0.2)',
+        transform: hovered ? 'translateY(-4px) scale(1.01)' : 'translateY(0)',
+        boxShadow: hovered ? `0 18px 40px rgba(0,0,0,0.35), 0 0 0 1px ${color}22, 0 0 40px ${color}18` : '0 8px 18px rgba(0,0,0,0.24)',
         position: 'relative', overflow: 'hidden',
+        backdropFilter: 'blur(16px)',
       }}
     >
       <div style={{
@@ -164,8 +284,10 @@ function StatCard({ label, value, color = C.accent, delay = 0 }) {
         background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
         opacity: hovered ? 1 : 0, transition: 'opacity 0.3s',
       }} />
-      <div style={{ fontSize: 11, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 600, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace", transition: 'text-shadow 0.3s', textShadow: hovered ? `0 0 20px ${color}66` : 'none' }}>{value}</div>
+      <div style={{ color: C.textSecondary, marginBottom: 10, maxWidth: 150 }}>
+        <PretextInline text={label} width={150} fontSize={10} lineHeight={1.15} color={C.textSecondary} accent={color} weight={600} uppercase mono />
+      </div>
+      <div style={{ fontSize: 32, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace", transition: 'text-shadow 0.3s', textShadow: hovered ? `0 0 20px ${color}66` : 'none' }}>{value}</div>
     </div>
   );
 }
@@ -208,7 +330,7 @@ function OverviewPanel({ clusters, suggestions, loading }) {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>System Dashboard</h2>
+      <PretextTitle text="System Dashboard" eyebrow="Live Control Surface" width={420} fontSize={38} lineHeight={0.95} />
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 32 }}>
         <StatCard label="Incidents Processed" value={loading ? '...' : totalIncidents} color={C.accent} delay={0} />
         <StatCard label="Active Clusters" value={loading ? '...' : clusterCount} color={C.info} delay={0.05} />
@@ -216,8 +338,8 @@ function OverviewPanel({ clusters, suggestions, loading }) {
         <StatCard label="High Impact Clusters" value={loading ? '...' : highImpact} color={C.warning} delay={0.15} />
       </div>
 
-      <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Classification Pipeline</h3>
-      <div style={{ background: `linear-gradient(180deg, ${C.surface}, ${C.prussianDeep})`, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
+      <div style={{ marginBottom: 16, fontSize: 11, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 2, fontFamily: "'IBM Plex Mono', monospace" }}>Classification Pipeline</div>
+      <div style={{ background: `linear-gradient(180deg, rgba(13,26,48,0.88), rgba(5,11,22,0.94))`, borderRadius: 20, border: `1px solid ${C.border}`, overflow: 'hidden', backdropFilter: 'blur(16px)', boxShadow: '0 18px 40px rgba(0,0,0,0.24)' }}>
         {pipeline.map((item, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -313,13 +435,13 @@ function SubmitPanel() {
 
   const inputStyle = {
     width: '100%', padding: '12px 16px', background: C.bg, border: `1px solid ${C.border}`,
-    borderRadius: 6, color: C.text, fontSize: 14, fontFamily: "'DM Sans', sans-serif",
+    borderRadius: 6, color: C.text, fontSize: 14, fontFamily: "'Space Grotesk', sans-serif",
     outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box',
   };
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>Submit Incident</h2>
+      <PretextTitle text="Submit Incident" eyebrow="Single Ticket Intake" width={360} fontSize={34} lineHeight={0.95} />
       <form onSubmit={handleSubmit} style={{ maxWidth: 640 }}>
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', fontSize: 12, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 600 }}>Short Description</label>
@@ -346,7 +468,7 @@ function SubmitPanel() {
           style={{
             padding: '12px 32px', background: loading ? C.accentDim : C.accent, color: '#fff',
             border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: loading ? 'wait' : 'pointer',
-            fontFamily: "'DM Sans', sans-serif", transition: 'all 0.3s',
+            fontFamily: "'Space Grotesk', sans-serif", transition: 'all 0.3s',
             animation: loading ? 'glow 2s ease-in-out infinite' : 'none',
             opacity: !shortDesc.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 10,
           }}
@@ -385,7 +507,7 @@ function SubmitPanel() {
           border: `1px solid ${C.border}`, animation: 'fadeUp 0.4s ease',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.text }}>Classification Result</h3>
+            <div style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.text, fontFamily: "'Space Grotesk', sans-serif" }}>Classification Result</div>
             <Badge color={C.info}>{result.classifier}</Badge>
           </div>
 
@@ -442,7 +564,7 @@ function ClustersPanel({ clusters }) {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>Incident Clusters</h2>
+      <PretextTitle text="Incident Clusters" eyebrow="Pattern Constellations" width={380} fontSize={34} lineHeight={0.95} />
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
         <StatCard label="Total Clusters" value={clusters.length} color={C.accent} delay={0} />
         <StatCard label="Total Incidents" value={totalIncidents} color={C.info} delay={0.05} />
@@ -509,7 +631,7 @@ function SuggestionsPanel({ suggestions }) {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>Project Suggestions</h2>
+      <PretextTitle text="Project Suggestions" eyebrow="Remediation Opportunities" width={420} fontSize={34} lineHeight={0.95} />
       {sorted.length === 0 && (
         <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary, fontSize: 14 }}>
           No project suggestions yet. Clusters need 5+ incidents to generate suggestions.
@@ -760,7 +882,7 @@ function UploadPanel({ onNavigate }) {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>Bulk CSV Upload</h2>
+      <PretextTitle text="Bulk CSV Upload" eyebrow="Batch Intake" width={360} fontSize={34} lineHeight={0.95} />
 
       {/* Drop zone */}
       <div
@@ -790,7 +912,7 @@ function UploadPanel({ onNavigate }) {
         <div style={{ animation: 'fadeUp 0.4s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.text }}>Preview</h3>
+              <div style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.text, fontFamily: "'Space Grotesk', sans-serif" }}>Preview</div>
               <Badge color={C.info}>{parsedRows.length} rows</Badge>
             </div>
           </div>
@@ -824,7 +946,7 @@ function UploadPanel({ onNavigate }) {
             style={{
               padding: '12px 28px', background: uploading ? C.accentDim : C.accent, color: '#fff',
               border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: uploading ? 'wait' : 'pointer',
-              fontFamily: "'DM Sans', sans-serif", transition: 'all 0.3s',
+              fontFamily: "'Space Grotesk', sans-serif", transition: 'all 0.3s',
               animation: uploading ? 'glow 2s ease-in-out infinite' : 'none',
               display: 'flex', alignItems: 'center', gap: 10,
             }}
@@ -857,9 +979,9 @@ function UploadPanel({ onNavigate }) {
           {pollTracker.length > 0 && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.text }}>
+                <div style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.text, fontFamily: "'Space Grotesk', sans-serif" }}>
                   {polling ? 'Processing AI Classification...' : 'Classification Complete'}
-                </h3>
+                </div>
                 {polling && <Spinner size={16} />}
               </div>
               <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, overflow: 'hidden', marginBottom: 24 }}>
@@ -889,9 +1011,9 @@ function UploadPanel({ onNavigate }) {
           {/* Theme distribution */}
           {allDone && themeDistribution().length > 0 && (
             <div style={{ animation: 'fadeUp 0.4s ease' }}>
-              <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <div style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 2, fontFamily: "'IBM Plex Mono', monospace" }}>
                 Theme Distribution
-              </h3>
+              </div>
               <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, padding: 20, marginBottom: 20 }}>
                 {themeDistribution().map((item, i) => (
                   <div key={i} style={{ marginBottom: i < themeDistribution().length - 1 ? 14 : 0 }}>
@@ -917,7 +1039,7 @@ function UploadPanel({ onNavigate }) {
                   style={{
                     padding: '8px 20px', background: 'transparent', color: C.accent,
                     border: `1px solid ${C.accent}`, borderRadius: 6, fontSize: 13, fontWeight: 600,
-                    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s',
+                    cursor: 'pointer', fontFamily: "'Space Grotesk', sans-serif", transition: 'all 0.2s',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = C.accentDim; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -980,7 +1102,7 @@ function DemandsPanel({ demands, isMock, loading }) {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 600, color: C.text }}>SPM Demands</h2>
+      <PretextTitle text="SPM Demands" eyebrow="Execution Backlog" width={320} fontSize={34} lineHeight={0.95} />
 
       {isMock && (
         <div style={{
@@ -1120,12 +1242,14 @@ const FUNNEL_COLORS = ['#378ADD', '#1D9E75', '#534AB7', '#D85A30'];
 function ChartCard({ title, height = 230, children, delay = 0 }) {
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${C.surface}, ${C.prussianDeep})`,
-      borderRadius: 12, border: `0.5px solid ${C.border}`,
+      background: `linear-gradient(160deg, rgba(13,26,48,0.9), rgba(5,11,22,0.95))`,
+      borderRadius: 20, border: `1px solid ${C.border}`,
       padding: '18px 20px', animation: `fadeUp 0.5s ease ${delay}s both`,
-      boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+      boxShadow: '0 18px 40px rgba(0,0,0,0.22)', backdropFilter: 'blur(16px)',
     }}>
-      <div style={{ fontSize: 14, color: C.textSecondary, fontWeight: 500, marginBottom: 14 }}>{title}</div>
+      <div style={{ color: C.textSecondary, marginBottom: 14, maxWidth: 220 }}>
+        <PretextInline text={title} width={220} fontSize={11} lineHeight={1.15} color={C.textSecondary} accent={C.info} weight={600} uppercase mono />
+      </div>
       <div style={{ height, position: 'relative' }}>{children}</div>
     </div>
   );
@@ -1187,7 +1311,7 @@ function AnalyticsPanel({ loading }) {
   const tickColor = '#7D8699';
 
   const baseScaleOpts = {
-    ticks: { color: tickColor, font: { size: 11, family: "'DM Sans', sans-serif" } },
+    ticks: { color: tickColor, font: { size: 11, family: "'Space Grotesk', sans-serif" } },
     grid: { color: gridLight, drawBorder: false },
   };
 
@@ -1312,6 +1436,7 @@ function AnalyticsPanel({ loading }) {
 
   return (
     <div style={{ animation: 'fadeUp 0.5s ease both' }}>
+      <PretextTitle text="Analytics Dashboard" eyebrow="Signal Map" width={440} fontSize={38} lineHeight={0.95} />
       {isMock && (
         <div style={{
           background: 'rgba(186,117,23,0.12)', border: '1px solid rgba(186,117,23,0.3)',
@@ -1433,7 +1558,14 @@ export default function App() {
     <>
       <style>{fontImport}{keyframes}{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: ${C.bg}; color: ${C.text}; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+        html { background: ${C.bg}; }
+        body { background:
+          radial-gradient(circle at 15% 20%, rgba(103,183,255,0.14), transparent 24%),
+          radial-gradient(circle at 85% 15%, rgba(116,242,206,0.10), transparent 20%),
+          radial-gradient(circle at 70% 75%, rgba(255,211,110,0.08), transparent 22%),
+          linear-gradient(180deg, #08101d, #050913 52%, #07111f);
+          color: ${C.text}; font-family: 'Space Grotesk', sans-serif; -webkit-font-smoothing: antialiased; }
+        #root { min-height: 100vh; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: ${C.prussianDeep}; }
         ::-webkit-scrollbar-thumb { background: ${C.accent}44; border-radius: 3px; transition: background 0.2s; }
@@ -1442,29 +1574,34 @@ export default function App() {
         button:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
       `}</style>
 
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+        <div style={{
+          position: 'fixed', inset: 0, pointerEvents: 'none', opacity: 0.3, mixBlendMode: 'screen',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.08) 0.8px, transparent 0.8px)',
+          backgroundSize: '22px 22px', animation: 'grainDrift 12s steps(10) infinite',
+        }} />
         {/* Sidebar */}
         <aside style={{
-          width: 240, background: `linear-gradient(180deg, ${C.prussian}, ${C.prussianDeep})`,
+          width: 252, background: `linear-gradient(180deg, rgba(11,23,48,0.88), rgba(5,11,22,0.98))`,
           borderRight: `1px solid ${C.border}`,
           display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 10,
-          boxShadow: '4px 0 24px rgba(0,0,0,0.3)',
+          boxShadow: '20px 0 60px rgba(0,0,0,0.28)', backdropFilter: 'blur(18px)',
         }}>
           {/* Logo & Branding */}
-          <div style={{ padding: '24px 20px 20px' }}>
+          <div style={{ padding: '28px 22px 22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
               <div style={{
-                width: 38, height: 38, borderRadius: 10,
+                width: 42, height: 42, borderRadius: 14,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: `linear-gradient(135deg, ${C.accent}, ${C.teal})`,
-                boxShadow: `0 4px 12px rgba(32,201,160,0.3)`,
+                background: `linear-gradient(135deg, ${C.accent}, ${C.info})`,
+                boxShadow: `0 8px 22px rgba(103,183,255,0.28)`,
                 animation: 'float 4s ease-in-out infinite',
                 overflow: 'hidden',
               }}>
                 <img src="/logo.svg" alt="Logo" style={{ width: 28, height: 28 }} />
               </div>
               <div>
-                <span style={{ fontSize: 16, fontWeight: 700, color: C.text, letterSpacing: -0.3, display: 'block' }}>Incident Intel</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: -0.5, display: 'block' }}>Incident Intel</span>
                 <span style={{ fontSize: 10, color: C.slate, fontFamily: "'IBM Plex Mono', monospace" }}>v2.0 · Grok Powered</span>
               </div>
             </div>
@@ -1476,19 +1613,19 @@ export default function App() {
             background: `linear-gradient(90deg, transparent, ${C.accent}44, transparent)`,
           }} />
 
-          <nav style={{ flex: 1, padding: '8px 12px' }}>
+          <nav style={{ flex: 1, padding: '12px 14px' }}>
             {navItems.map((item, idx) => {
               const active = tab === item.key;
               return (
                 <button key={item.key} onClick={() => setTab(item.key)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 16px',
-                    background: active ? `linear-gradient(90deg, ${C.accentDim}, transparent)` : 'transparent',
+                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 16px',
+                    background: active ? `linear-gradient(90deg, ${C.accentDim}, rgba(103,183,255,0.04))` : 'transparent',
                     border: 'none',
                     borderLeft: active ? `3px solid ${C.accent}` : '3px solid transparent',
-                    borderRadius: '0 8px 8px 0', cursor: 'pointer',
+                    borderRadius: 14, cursor: 'pointer',
                     color: active ? C.accent : C.textSecondary,
-                    fontSize: 13, fontWeight: active ? 600 : 500, fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 13, fontWeight: active ? 600 : 500, fontFamily: "'Space Grotesk', sans-serif",
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', marginBottom: 2,
                     animation: `slideIn 0.4s ease ${idx * 0.05}s both`,
                   }}
@@ -1496,7 +1633,17 @@ export default function App() {
                   onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textSecondary; e.currentTarget.style.paddingLeft = '16px'; } }}
                 >
                   {item.icon}
-                  {item.label}
+                  <span style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                    <PretextInline
+                      text={item.label}
+                      width={120}
+                      fontSize={13}
+                      lineHeight={1.05}
+                      color={active ? C.accent : C.textSecondary}
+                      accent={active ? C.accent : C.info}
+                      weight={active ? 700 : 600}
+                    />
+                  </span>
                 </button>
               );
             })}
@@ -1512,7 +1659,7 @@ export default function App() {
         </aside>
 
         {/* Main Content */}
-        <main style={{ marginLeft: 240, flex: 1, padding: '32px 40px', minHeight: '100vh', animation: 'fadeUp 0.6s ease' }}>
+        <main style={{ marginLeft: 252, flex: 1, padding: '40px 44px 48px', minHeight: '100vh', animation: 'fadeUp 0.6s ease', position: 'relative' }}>
           {tab === 'overview' && <OverviewPanel clusters={clusters} suggestions={suggestions} loading={!dataLoaded} />}
           {tab === 'submit' && <SubmitPanel />}
           {tab === 'upload' && <UploadPanel onNavigate={setTab} />}
