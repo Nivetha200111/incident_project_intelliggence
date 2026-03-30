@@ -18,7 +18,8 @@
       "Bash(node -e \"const j=require\\(''./tmp_sug.json''\\); console.log\\(''Top keys:'', Object.keys\\(j\\)\\); if\\(j.result\\) { console.log\\(''result keys:'', Object.keys\\(j.result\\)\\); }\")",
       "Bash(node -e \"let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>{const j=JSON.parse\\(d\\);const s=j.result.project_suggestions;s.forEach\\(\\(p,i\\)=>console.log\\(i+1,JSON.stringify\\({name:p.project_name,priority:p.priority,status:p.status,support_count:p.support_count,source:p.source_cluster},null,0\\)\\)\\);}\\)\")",
       "Bash(pandoc \"Incident_Intelligence_Architecture_Book.docx\" -o /tmp/arch_book.md)",
-      "Bash(pandoc \"C:/Users/nnive/Downloads/Incident_Intelligence_Architecture_Book.docx\" -t plain)"
+      "Bash(pandoc \"C:/Users/nnive/Downloads/Incident_Intelligence_Architecture_Book.docx\" -t plain)",
+      "Bash(npx vite:*)"
     ]
   }
 }
