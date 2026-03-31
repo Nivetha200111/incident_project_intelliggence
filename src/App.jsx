@@ -1746,6 +1746,17 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
   const pipeline_funnel = analytics.pipeline_funnel || { incidents: 0, clusters: 0, suggestions: 0, demands: 0 };
   const cleanDemandName = (name = '') => name.split('Remediation Initiative')[0].replace(/[\u2013\u2014-]\s*$/u, '').trim();
   const wrapAxisLabel = (label = '') => String(label).split(/\s+/).filter(Boolean);
+  const confidenceTotal = confidence_distribution.high + confidence_distribution.medium + confidence_distribution.low;
+  const estimatedAvgConfidence = confidenceTotal
+    ? Math.round(((confidence_distribution.high * 90) + (confidence_distribution.medium * 70) + (confidence_distribution.low * 40)) / confidenceTotal)
+    : 0;
+  const rawAvgConfidence = Number(summary.avg_confidence);
+  const normalizedAvgConfidence = Number.isFinite(rawAvgConfidence)
+    ? Math.round(rawAvgConfidence <= 1 ? rawAvgConfidence * 100 : rawAvgConfidence)
+    : estimatedAvgConfidence;
+  const displayAvgConfidence = Math.abs(normalizedAvgConfidence - estimatedAvgConfidence) > 25
+    ? estimatedAvgConfidence
+    : normalizedAvgConfidence;
 
   const gridLight = 'rgba(255,255,255,0.06)';
   const tickColor = '#7D8699';
@@ -1813,7 +1824,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
   };
 
   // --- Confidence Distribution (doughnut) ---
-  const confTotal = confidence_distribution.high + confidence_distribution.medium + confidence_distribution.low;
+  const confTotal = confidenceTotal;
   const confData = {
     labels: ['High (>80%)', 'Medium (60-80%)', 'Low (<60%)'],
     datasets: [{
@@ -1949,7 +1960,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
     { label: 'Total Incidents', value: summary.total_incidents, color: '#378ADD' },
     { label: 'Active Clusters', value: summary.total_clusters, color: '#1D9E75' },
     { label: 'Demands Generated', value: summary.total_demands, color: '#534AB7' },
-    { label: 'Avg AI Confidence', value: `${summary.avg_confidence}%`, color: '#BA7517' },
+    { label: 'Avg AI Confidence', value: `${displayAvgConfidence}%`, color: '#BA7517' },
   ];
 
   return (
@@ -2006,7 +2017,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
               position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%, -50%)',
               textAlign: 'center', pointerEvents: 'none',
             }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: C.text, fontFamily: "'IBM Plex Mono', monospace" }}>{summary.avg_confidence}%</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.text, fontFamily: "'IBM Plex Mono', monospace" }}>{displayAvgConfidence}%</div>
               <div style={{ fontSize: 10, color: C.textSecondary, marginTop: 2 }}>avg confidence</div>
             </div>
           </div>
