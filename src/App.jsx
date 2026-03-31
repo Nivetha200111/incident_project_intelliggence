@@ -1975,7 +1975,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
 
       {/* Row 3: Confidence Distribution + ROI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
-        <ChartCard title="AI Confidence Distribution" height={240} delay={0.2}>
+        <ChartCard title="AI Confidence Distribution" height={300} delay={0.2}>
           <div style={{ position: 'relative', height: '100%' }}>
             <Doughnut data={confData} options={confOpts} />
             <div style={{
@@ -1992,7 +1992,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
             { color: '#E24B4A', label: 'Low (<60%)', value: confidence_distribution.low },
           ]} />
         </ChartCard>
-        <ChartCard title="Estimated ROI by Demand" height={240} delay={0.25}>
+        <ChartCard title="Estimated ROI by Demand" height={300} delay={0.25}>
           <Bar data={cleanRoiData} options={cleanRoiOpts} />
         </ChartCard>
       </div>
