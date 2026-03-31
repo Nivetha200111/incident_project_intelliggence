@@ -1734,6 +1734,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
   const demand_roi = Array.isArray(analytics.demand_roi) ? analytics.demand_roi : [];
   const pipeline_funnel = analytics.pipeline_funnel || { incidents: 0, clusters: 0, suggestions: 0, demands: 0 };
   const cleanDemandName = (name = '') => name.split('Remediation Initiative')[0].replace(/[\u2013\u2014-]\s*$/u, '').trim();
+  const wrapAxisLabel = (label = '') => String(label).split(/\s+/).filter(Boolean);
 
   const gridLight = 'rgba(255,255,255,0.06)';
   const tickColor = '#7D8699';
@@ -1745,7 +1746,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
 
   // --- Incidents by Category (vertical bar) ---
   const categoryData = {
-    labels: incidents_by_category.map(d => d.theme.split(' ').slice(0, 2).join(' ')),
+    labels: incidents_by_category.map((d) => wrapAxisLabel(d.theme)),
     datasets: [{
       data: incidents_by_category.map(d => d.count),
       backgroundColor: incidents_by_category.map(d => THEME_COLORS[d.theme] || '#378ADD'),
@@ -1764,7 +1765,7 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
   // --- Cluster Impact (grouped bar) ---
   const impactMap = { Low: 1, Medium: 2, High: 3, Critical: 4 };
   const clusterImpactData = {
-    labels: cluster_impact.map(d => d.theme.split(' ').slice(0, 2).join(' ')),
+    labels: cluster_impact.map((d) => wrapAxisLabel(d.theme)),
     datasets: [
       {
         label: 'Incidents',
@@ -1860,10 +1861,19 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
 
   const cleanCategoryOpts = {
     ...categoryOpts,
+    layout: { padding: { bottom: 8 } },
     scales: {
       x: {
         ...baseScaleOpts,
-        ticks: { color: tickColor, font: { size: 10, family: "'Space Grotesk', sans-serif" }, maxRotation: 24, minRotation: 24 },
+        offset: true,
+        ticks: {
+          color: tickColor,
+          font: { size: 9, family: "'Space Grotesk', sans-serif" },
+          autoSkip: false,
+          maxRotation: 0,
+          minRotation: 0,
+          padding: 10,
+        },
         grid: { ...baseScaleOpts.grid, display: false },
       },
       y: { ...baseScaleOpts, beginAtZero: true },
@@ -1872,10 +1882,19 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
 
   const cleanClusterImpactOpts = {
     ...clusterImpactOpts,
+    layout: { padding: { bottom: 8 } },
     scales: {
       x: {
         ...baseScaleOpts,
-        ticks: { color: tickColor, font: { size: 10, family: "'Space Grotesk', sans-serif" }, maxRotation: 24, minRotation: 24 },
+        offset: true,
+        ticks: {
+          color: tickColor,
+          font: { size: 9, family: "'Space Grotesk', sans-serif" },
+          autoSkip: false,
+          maxRotation: 0,
+          minRotation: 0,
+          padding: 10,
+        },
         grid: { ...baseScaleOpts.grid, display: false },
       },
       y: { ...baseScaleOpts, beginAtZero: true },
@@ -1945,10 +1964,10 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
 
       {/* Row 2: Incidents by Category + Cluster Impact */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
-        <ChartCard title="Incidents by Category" delay={0.1}>
+        <ChartCard title="Incidents by Category" height={260} delay={0.1}>
           <Bar data={categoryData} options={cleanCategoryOpts} />
         </ChartCard>
-        <ChartCard title="Cluster Impact Escalation" delay={0.15}>
+        <ChartCard title="Cluster Impact Escalation" height={260} delay={0.15}>
           <Bar data={clusterImpactData} options={cleanClusterImpactOpts} />
           <CustomLegend items={[{ color: '#378ADD', label: 'Incidents' }, { color: '#D85A30', label: 'Impact Level (1-4)' }]} />
         </ChartCard>
