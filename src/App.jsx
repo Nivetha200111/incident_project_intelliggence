@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
+import { prepareWithSegments, layoutWithLines, layoutNextLine } from '@chenglou/pretext';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -133,6 +133,53 @@ const keyframes = `
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-2px); }
   }
+  @keyframes wordReveal {
+    0% { opacity: 0; transform: translateY(22px) rotateX(-40deg) scale(0.85); filter: blur(6px); }
+    60% { opacity: 0.8; transform: translateY(-2px) rotateX(4deg) scale(1.02); filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) rotateX(0deg) scale(1); filter: blur(0); }
+  }
+  @keyframes glitchSlice {
+    0%, 100% { clip-path: inset(0 0 0 0); transform: translateX(0); }
+    20% { clip-path: inset(20% 0 60% 0); transform: translateX(-3px); }
+    40% { clip-path: inset(50% 0 20% 0); transform: translateX(3px); }
+    60% { clip-path: inset(10% 0 70% 0); transform: translateX(-2px); }
+    80% { clip-path: inset(70% 0 5% 0); transform: translateX(2px); }
+  }
+  @keyframes scanline {
+    0% { top: -6px; }
+    100% { top: calc(100% + 6px); }
+  }
+  @keyframes textMeasureLine {
+    0% { width: 0; opacity: 0; }
+    50% { opacity: 1; }
+    100% { width: 100%; opacity: 0.4; }
+  }
+  @keyframes digitDrop {
+    0% { opacity: 0; transform: translateY(-20px) scale(0.7); filter: blur(4px); }
+    70% { opacity: 1; transform: translateY(2px) scale(1.05); filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+  @keyframes hexRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes flowReveal {
+    0% { opacity: 0; transform: translateX(-12px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes watermarkScroll {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+  }
+  @keyframes chromaShift {
+    0%, 100% { filter: hue-rotate(0deg); }
+    50% { filter: hue-rotate(20deg); }
+  }
+  @keyframes measurePulse {
+    0% { opacity: 0; transform: scaleX(0); }
+    50% { opacity: 0.6; transform: scaleX(1); }
+    100% { opacity: 0; transform: scaleX(1); }
+  }
 `;
 
 // ─── Utility Components ─────────────────────────────────────────────────────────
@@ -160,6 +207,7 @@ function Badge({ children, color = C.accent, bg }) {
 function PretextTitle({ text, width = 420, fontSize = 24, lineHeight = 1, color = C.text, accent = C.accent, align = 'left', eyebrow }) {
   const hostRef = useRef(null);
   const [measuredWidth, setMeasuredWidth] = useState(width);
+  const [revealed, setRevealed] = useState(false);
   const font = `700 ${fontSize}px "Space Grotesk"`;
   const prepared = useMemo(() => prepareWithSegments(text, font), [text, font]);
 
@@ -173,43 +221,108 @@ function PretextTitle({ text, width = 420, fontSize = 24, lineHeight = 1, color 
     return () => observer.disconnect();
   }, [width]);
 
+  useEffect(() => { const t = setTimeout(() => setRevealed(true), 100); return () => clearTimeout(t); }, []);
+
   const lines = useMemo(() => {
     const result = layoutWithLines(prepared, measuredWidth, Math.round(fontSize * lineHeight));
     return result.lines.length ? result.lines : [{ text }];
   }, [prepared, measuredWidth, fontSize, lineHeight, text]);
 
+  // Split each line into individual words for per-word animation
+  const wordsPerLine = useMemo(() => {
+    let globalWordIndex = 0;
+    return lines.map(line => {
+      const words = line.text.split(/(\s+)/).filter(w => w.trim().length > 0);
+      return words.map(word => ({ word, index: globalWordIndex++ }));
+    });
+  }, [lines]);
+
+  const gradients = [
+    `linear-gradient(135deg, ${color}, ${accent})`,
+    `linear-gradient(135deg, ${accent}, ${C.info})`,
+    `linear-gradient(135deg, ${C.info}, ${color})`,
+    `linear-gradient(135deg, ${color}, ${C.gold})`,
+  ];
+
   return (
-    <div ref={hostRef} style={{ width: '100%', maxWidth: width, marginBottom: 24 }}>
+    <div ref={hostRef} style={{ width: '100%', maxWidth: width, marginBottom: 28, position: 'relative' }}>
       {eyebrow && (
         <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 12,
-          color: C.textSecondary, fontSize: 11, fontFamily: "'IBM Plex Mono', monospace",
-          textTransform: 'uppercase', letterSpacing: 2.2,
+          display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 14,
+          color: C.textSecondary, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace",
+          textTransform: 'uppercase', letterSpacing: 2.8,
         }}>
-          <span style={{ width: 24, height: 1, background: `linear-gradient(90deg, ${accent}, transparent)` }} />
-          {eyebrow}
+          <span style={{
+            width: 32, height: 1,
+            background: `linear-gradient(90deg, ${accent}, transparent)`,
+            animation: revealed ? 'textMeasureLine 0.8s ease forwards' : 'none',
+          }} />
+          <span style={{
+            animation: revealed ? 'fadeUp 0.5s ease 0.2s both' : 'none',
+            opacity: revealed ? undefined : 0,
+          }}>{eyebrow}</span>
+          <span style={{
+            width: 8, height: 8, borderRadius: 2,
+            background: accent, opacity: 0.3,
+            animation: 'hexPulse 3s ease-in-out infinite',
+            transform: 'rotate(45deg)',
+          }} />
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'center' ? 'center' : 'flex-start', gap: 2 }}>
-        {lines.map((line, index) => (
-          <span key={`${line.text}-${index}`} style={{
-            display: 'block',
-            fontSize,
-            fontWeight: 700,
-            lineHeight,
-            color,
-            textAlign: align,
-            letterSpacing: '-0.04em',
-            fontFamily: "'Space Grotesk', sans-serif",
-            transform: `translateX(${index % 2 === 0 ? 0 : 6}px) rotate(${index % 2 === 0 ? -0.35 : 0.25}deg)`,
-            textShadow: `0 0 24px ${accent}22`,
-            background: `linear-gradient(135deg, ${color}, ${accent})`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: align === 'center' ? 'center' : 'flex-start', gap: 4,
+        perspective: '800px',
+      }}>
+        {wordsPerLine.map((words, lineIndex) => (
+          <div key={lineIndex} style={{
+            display: 'flex', flexWrap: 'wrap', gap: `0 ${fontSize * 0.28}px`,
+            alignItems: align === 'center' ? 'center' : 'flex-start',
+            justifyContent: align === 'center' ? 'center' : 'flex-start',
+            position: 'relative',
           }}>
-            {line.text}
-          </span>
+            {words.map(({ word, index }) => (
+              <span key={`${word}-${index}`} style={{
+                display: 'inline-block',
+                fontSize,
+                fontWeight: 700,
+                lineHeight,
+                letterSpacing: '-0.04em',
+                fontFamily: "'Space Grotesk', sans-serif",
+                transform: `rotate(${index % 3 === 0 ? -0.4 : index % 3 === 1 ? 0.3 : -0.15}deg)`,
+                background: gradients[index % gradients.length],
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: revealed ? `wordReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.08}s both` : 'none',
+                opacity: revealed ? undefined : 0,
+                transformOrigin: 'left bottom',
+                position: 'relative',
+              }}>
+                {word}
+              </span>
+            ))}
+            {/* Measurement underline decoration */}
+            <span style={{
+              position: 'absolute', bottom: -3, left: 0, height: 1,
+              background: `linear-gradient(90deg, ${accent}44, transparent)`,
+              animation: revealed ? `measurePulse 1.2s ease ${lineIndex * 0.15 + 0.5}s both` : 'none',
+              width: '100%', transformOrigin: 'left',
+            }} />
+          </div>
         ))}
+      </div>
+      {/* Decorative pretext measurement indicator */}
+      <div style={{
+        marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, opacity: 0.25,
+      }}>
+        <span style={{
+          width: 4, height: 4, borderRadius: 1, background: accent,
+          transform: 'rotate(45deg)',
+        }} />
+        <span style={{
+          height: 1, flex: 1, maxWidth: 60,
+          background: `linear-gradient(90deg, ${accent}66, transparent)`,
+        }} />
       </div>
     </div>
   );
@@ -242,48 +355,307 @@ function PretextInline({ text, width = 140, fontSize = 13, lineHeight = 1.05, co
     <span ref={hostRef} style={{ display: 'block', width: '100%', maxWidth: width, overflow: 'visible' }}>
       {lines.map((line, index) => (
         <span key={`${line.text}-${index}`} style={{ display: 'block', position: 'relative' }}>
+          {/* Ghost layer - chromatic aberration effect */}
           <span style={{
-            position: 'absolute',
-            inset: 0,
-            fontSize,
-            lineHeight,
-            fontWeight: weight,
+            position: 'absolute', inset: 0, fontSize, lineHeight, fontWeight: weight,
             letterSpacing: uppercase ? '0.18em' : '-0.03em',
-            color: accent,
-            opacity: 0.3,
+            color: C.danger, opacity: 0.12,
             fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
-            transform: `translateX(${index % 2 === 0 ? 2 : 4}px) translateY(${index % 2 === 0 ? 1 : -1}px) rotate(${index % 2 === 0 ? -0.8 : 0.6}deg)`,
-            transformOrigin: 'left center',
-            pointerEvents: 'none',
-            whiteSpace: 'pre-wrap',
-            filter: 'blur(0.2px)',
-          }}>
-            {line.text}
-          </span>
+            transform: `translateX(${index % 2 === 0 ? -1 : 1}px) translateY(${index % 2 === 0 ? -1 : 0}px)`,
+            transformOrigin: 'left center', pointerEvents: 'none', whiteSpace: 'pre-wrap',
+          }}>{line.text}</span>
+          {/* Shadow layer - accent ghost */}
           <span style={{
-            display: 'block',
-            position: 'relative',
-            fontSize,
-            lineHeight,
-            fontWeight: weight,
+            position: 'absolute', inset: 0, fontSize, lineHeight, fontWeight: weight,
             letterSpacing: uppercase ? '0.18em' : '-0.03em',
-            color,
+            color: accent, opacity: 0.25,
+            fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
+            transform: `translateX(${index % 2 === 0 ? 2 : 3}px) translateY(${index % 2 === 0 ? 1 : -1}px) rotate(${index % 2 === 0 ? -0.8 : 0.6}deg)`,
+            transformOrigin: 'left center', pointerEvents: 'none', whiteSpace: 'pre-wrap',
+            filter: 'blur(0.3px)',
+          }}>{line.text}</span>
+          {/* Main layer */}
+          <span style={{
+            display: 'block', position: 'relative', fontSize, lineHeight, fontWeight: weight,
+            letterSpacing: uppercase ? '0.18em' : '-0.03em', color,
             fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
             transform: `translateX(${index % 2 === 0 ? 0 : 2}px) rotate(${index % 2 === 0 ? -0.35 : 0.28}deg)`,
             transformOrigin: 'left center',
             textShadow: `0 0 16px ${accent}18`,
             whiteSpace: 'pre-wrap',
-          }}>
-            {line.text}
-          </span>
+          }}>{line.text}</span>
         </span>
       ))}
     </span>
   );
 }
 
+// ─── PretextGlitch: Cipher-scramble text on hover ──────────────────────────────
+
+const GLITCH_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*!?<>{}[]';
+
+function PretextGlitch({ text, fontSize = 14, color = C.accent, mono = true }) {
+  const [displayText, setDisplayText] = useState(text);
+  const [isScrambling, setIsScrambling] = useState(false);
+  const rafRef = useRef(null);
+  const family = mono ? '"IBM Plex Mono"' : '"Space Grotesk"';
+  const font = `600 ${fontSize}px ${family}`;
+
+  // Use pretext to measure the text width for the exact underline
+  const measured = useMemo(() => {
+    const prepared = prepareWithSegments(text, font);
+    const result = layoutWithLines(prepared, 9999, fontSize);
+    return result.lines[0]?.width || 0;
+  }, [text, font, fontSize]);
+
+  const scramble = useCallback(() => {
+    if (isScrambling) return;
+    setIsScrambling(true);
+    let iteration = 0;
+    const totalIterations = text.length * 2;
+    const interval = setInterval(() => {
+      setDisplayText(
+        text.split('').map((char, i) => {
+          if (char === ' ') return ' ';
+          if (i < iteration / 2) return text[i];
+          return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
+        }).join('')
+      );
+      iteration++;
+      if (iteration > totalIterations) {
+        clearInterval(interval);
+        setDisplayText(text);
+        setIsScrambling(false);
+      }
+    }, 30);
+    return () => clearInterval(interval);
+  }, [text, isScrambling]);
+
+  return (
+    <span
+      onMouseEnter={scramble}
+      style={{
+        display: 'inline-block', position: 'relative', cursor: 'default',
+        fontSize, fontWeight: 600, color,
+        fontFamily: mono ? "'IBM Plex Mono', monospace" : "'Space Grotesk', sans-serif",
+        letterSpacing: '0.05em', textTransform: 'uppercase',
+      }}
+    >
+      {/* Glitch ghost layers */}
+      {isScrambling && (
+        <>
+          <span style={{
+            position: 'absolute', inset: 0, color: C.danger, opacity: 0.4,
+            animation: 'glitchSlice 0.15s steps(2) infinite',
+            pointerEvents: 'none',
+          }}>{displayText}</span>
+          <span style={{
+            position: 'absolute', inset: 0, color: C.info, opacity: 0.4,
+            animation: 'glitchSlice 0.15s steps(2) infinite reverse',
+            pointerEvents: 'none',
+          }}>{displayText}</span>
+        </>
+      )}
+      <span style={{ position: 'relative' }}>{displayText}</span>
+      {/* Pretext-measured exact underline */}
+      <span style={{
+        position: 'absolute', bottom: -3, left: 0,
+        width: measured || '100%', height: 1,
+        background: `linear-gradient(90deg, ${color}, transparent)`,
+        opacity: isScrambling ? 1 : 0.3,
+        transition: 'opacity 0.3s',
+      }} />
+      {/* Scanline during scramble */}
+      {isScrambling && (
+        <span style={{
+          position: 'absolute', left: 0, right: 0, height: 2,
+          background: `linear-gradient(90deg, transparent, ${color}88, transparent)`,
+          animation: 'scanline 0.4s linear infinite',
+          pointerEvents: 'none',
+        }} />
+      )}
+    </span>
+  );
+}
+
+// ─── PretextCounter: Per-digit animated number display ─────────────────────────
+
+function PretextCounter({ value, color = C.accent, fontSize = 32, delay = 0 }) {
+  const [displayed, setDisplayed] = useState(false);
+  const chars = String(value).split('');
+  const font = `700 ${fontSize}px "IBM Plex Mono"`;
+
+  // Measure each character width with pretext
+  const charWidths = useMemo(() => {
+    return chars.map(ch => {
+      if (ch === '.' || ch === ',' || ch === '%') return fontSize * 0.4;
+      const prepared = prepareWithSegments(ch, font);
+      const result = layoutWithLines(prepared, 9999, fontSize);
+      return result.lines[0]?.width || fontSize * 0.6;
+    });
+  }, [chars.join(''), font, fontSize]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDisplayed(true), delay * 1000 + 100);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', position: 'relative' }}>
+      {chars.map((ch, i) => (
+        <span key={`${ch}-${i}`} style={{
+          display: 'inline-block',
+          width: charWidths[i],
+          fontSize, fontWeight: 700, color,
+          fontFamily: "'IBM Plex Mono', monospace",
+          textAlign: 'center',
+          animation: displayed ? `digitDrop 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.06}s both` : 'none',
+          opacity: displayed ? undefined : 0,
+          textShadow: `0 0 20px ${color}44`,
+        }}>
+          {ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// ─── PretextFlowHex: Text flowing around a hexagonal shape ─────────────────────
+
+function PretextFlowHex({ text, hexSize = 64, fontSize = 13, color = C.textSecondary, accent = C.accent, icon }) {
+  const hostRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(400);
+  const font = `400 ${fontSize}px "Space Grotesk"`;
+  const prepared = useMemo(() => prepareWithSegments(text, font), [text, font]);
+
+  useEffect(() => {
+    const node = hostRef.current;
+    if (!node) return;
+    const update = () => setContainerWidth(Math.max(200, Math.floor(node.clientWidth)));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  // Use layoutNextLine to flow text around the hex shape
+  const flowLines = useMemo(() => {
+    const lines = [];
+    const lh = Math.round(fontSize * 1.6);
+    const hexLines = Math.ceil((hexSize + 16) / lh); // lines that need indentation
+    let cursor = { segmentIndex: 0, graphemeIndex: 0 };
+    let lineIndex = 0;
+
+    while (true) {
+      // Indent lines next to the hex
+      const indent = lineIndex < hexLines ? (hexSize + 20) : 0;
+      const lineWidth = containerWidth - indent;
+      if (lineWidth < 60) { lineIndex++; continue; }
+
+      const result = layoutNextLine(prepared, cursor, lineWidth);
+      if (!result) break;
+      lines.push({ ...result, indent, lineIndex });
+      cursor = result.end;
+      lineIndex++;
+      if (lineIndex > 50) break; // safety
+    }
+    return lines;
+  }, [prepared, containerWidth, hexSize, fontSize]);
+
+  return (
+    <div ref={hostRef} style={{ position: 'relative', width: '100%', lineHeight: 1.6 }}>
+      {/* Hexagonal shape */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0,
+        width: hexSize, height: hexSize,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <svg width={hexSize} height={hexSize} viewBox="0 0 64 64" style={{ position: 'absolute' }}>
+          <polygon
+            points="32,2 58,16 58,48 32,62 6,48 6,16"
+            fill="none" stroke={accent} strokeWidth="1.5" opacity="0.3"
+          />
+          <polygon
+            points="32,8 52,19 52,45 32,56 12,45 12,19"
+            fill={`${accent}08`} stroke={accent} strokeWidth="0.5" opacity="0.5"
+            style={{ animation: 'hexPulse 4s ease-in-out infinite' }}
+          />
+        </svg>
+        {icon && <span style={{ position: 'relative', fontSize: hexSize * 0.35, color: accent, opacity: 0.7 }}>{icon}</span>}
+      </div>
+      {/* Flowing text lines */}
+      <div style={{ position: 'relative' }}>
+        {flowLines.map((line, i) => (
+          <div key={i} style={{
+            paddingLeft: line.indent,
+            fontSize, color,
+            fontFamily: "'Space Grotesk', sans-serif",
+            animation: `flowReveal 0.4s ease ${i * 0.04}s both`,
+            lineHeight: 1.6,
+          }}>
+            {line.text}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── PretextWatermark: Subtle background text pattern ──────────────────────────
+
+function PretextWatermark() {
+  const phrases = [
+    'INCIDENT INTELLIGENCE', 'PATTERN RECOGNITION', 'CLUSTER ANALYSIS',
+    'PROJECT GENERATION', 'AI CLASSIFICATION', 'DEMAND PIPELINE',
+    'GROK POWERED', 'SERVICENOW INTEGRATION', 'REAL-TIME ANALYTICS',
+    'INCIDENT INTELLIGENCE', 'PATTERN RECOGNITION', 'CLUSTER ANALYSIS',
+  ];
+  const font = '700 14px "Space Grotesk"';
+
+  // Use pretext to measure each phrase for perfect spacing
+  const measuredPhrases = useMemo(() => {
+    return phrases.map(phrase => {
+      const prepared = prepareWithSegments(phrase, font);
+      const result = layoutWithLines(prepared, 9999, 14);
+      return { text: phrase, width: result.lines[0]?.width || 200 };
+    });
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 252, right: 0, bottom: 0,
+      overflow: 'hidden', pointerEvents: 'none', zIndex: 0,
+      opacity: 0.018, mixBlendMode: 'screen',
+    }}>
+      <div style={{
+        animation: 'watermarkScroll 60s linear infinite',
+        display: 'flex', flexDirection: 'column', gap: 40,
+        transform: 'rotate(-8deg) translateX(-5%)',
+        width: '120%', paddingTop: 40,
+      }}>
+        {[0, 1, 2, 3, 4, 5, 6, 7].map(row => (
+          <div key={row} style={{
+            display: 'flex', gap: 60,
+            paddingLeft: row % 2 === 0 ? 0 : 120,
+            whiteSpace: 'nowrap',
+          }}>
+            {measuredPhrases.map((p, i) => (
+              <span key={i} style={{
+                fontSize: 14, fontWeight: 700, color: C.accent,
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: '0.2em', textTransform: 'uppercase',
+              }}>{p.text}</span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ label, value, color = C.accent, delay = 0 }) {
   const [hovered, setHovered] = useState(false);
+  const isNumeric = typeof value === 'number' || /^\d+$/.test(String(value));
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -294,22 +666,35 @@ function StatCard({ label, value, color = C.accent, delay = 0 }) {
         border: `1px solid ${hovered ? color + '44' : C.border}`,
         animation: `scaleIn 0.5s ease ${delay}s both`,
         transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: hovered ? 'translateY(-4px) scale(1.01)' : 'translateY(0)',
+        transform: hovered ? 'translateY(-6px) scale(1.02)' : 'translateY(0)',
         boxShadow: hovered ? `0 18px 40px rgba(0,0,0,0.35), 0 0 0 1px ${color}22, 0 0 40px ${color}18` : '0 8px 18px rgba(0,0,0,0.24)',
         position: 'relative', overflow: 'hidden',
         backdropFilter: 'blur(16px)',
       }}
     >
+      {/* Top accent line */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 2,
         background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
         opacity: hovered ? 1 : 0, transition: 'opacity 0.3s',
       }} />
+      {/* Corner decoration */}
+      <div style={{
+        position: 'absolute', top: 8, right: 8,
+        width: 16, height: 16, opacity: 0.15,
+        border: `1px solid ${color}`, borderRadius: 2,
+        transform: 'rotate(45deg)',
+        animation: hovered ? 'hexPulse 2s ease-in-out infinite' : 'none',
+      }} />
       <div style={{
         fontSize: 10, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 2,
         fontWeight: 600, marginBottom: 10, fontFamily: "'IBM Plex Mono', monospace",
       }}>{label}</div>
-      <div style={{ fontSize: 32, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace", transition: 'text-shadow 0.3s', textShadow: hovered ? `0 0 20px ${color}66` : 'none' }}>{value}</div>
+      {isNumeric ? (
+        <PretextCounter value={value} color={color} fontSize={32} delay={delay} />
+      ) : (
+        <div style={{ fontSize: 32, fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace", transition: 'text-shadow 0.3s', textShadow: hovered ? `0 0 20px ${color}66` : 'none' }}>{value}</div>
+      )}
     </div>
   );
 }
@@ -350,9 +735,29 @@ function OverviewPanel({ clusters, suggestions, loading }) {
     { name: 'Project Suggestion Engine', status: isConnected ? `${suggestionCount} active` : (loading ? 'Loading...' : 'No data'), color: isConnected ? C.mint : (loading ? C.warning : C.textSecondary) },
   ];
 
+  const pipelineDescription = isConnected
+    ? 'Live classification pipeline actively processing incidents through Grok AI analysis, keyword extraction, confidence scoring, cluster matching, and automated project suggestion generation.'
+    : 'Pipeline standing by. Submit incidents to activate the classification engine.';
+
   return (
     <div>
-      <PretextTitle text="System Dashboard" eyebrow="Live Control Surface" width={420} fontSize={38} lineHeight={0.95} />
+      <PretextTitle text="System Dashboard" eyebrow="Live Control Surface" width={480} fontSize={38} lineHeight={0.95} />
+
+      {/* Hero description with pretext flow around hex */}
+      <div style={{
+        marginBottom: 28, padding: '20px 24px',
+        background: `linear-gradient(135deg, rgba(13,26,48,0.6), rgba(5,11,22,0.8))`,
+        borderRadius: 16, border: `1px solid ${C.border}`,
+        animation: 'fadeUp 0.6s ease 0.2s both',
+      }}>
+        <PretextFlowHex
+          text={pipelineDescription}
+          hexSize={56} fontSize={13}
+          color={C.textSecondary} accent={C.accent}
+          icon="◈"
+        />
+      </div>
+
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 32 }}>
         <StatCard label="Incidents Processed" value={loading ? '...' : totalIncidents} color={C.accent} delay={0} />
         <StatCard label="Active Clusters" value={loading ? '...' : clusterCount} color={C.info} delay={0.05} />
@@ -360,7 +765,9 @@ function OverviewPanel({ clusters, suggestions, loading }) {
         <StatCard label="High Impact Clusters" value={loading ? '...' : highImpact} color={C.warning} delay={0.15} />
       </div>
 
-      <div style={{ marginBottom: 16, fontSize: 11, fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 2, fontFamily: "'IBM Plex Mono', monospace" }}>Classification Pipeline</div>
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <PretextGlitch text="Classification Pipeline" fontSize={11} color={C.textSecondary} />
+      </div>
       <div style={{ background: `linear-gradient(180deg, rgba(13,26,48,0.88), rgba(5,11,22,0.94))`, borderRadius: 20, border: `1px solid ${C.border}`, overflow: 'hidden', backdropFilter: 'blur(16px)', boxShadow: '0 18px 40px rgba(0,0,0,0.24)' }}>
         {pipeline.map((item, i) => (
           <div key={i} style={{
@@ -373,10 +780,14 @@ function OverviewPanel({ clusters, suggestions, loading }) {
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}`, animation: item.status === 'Active' ? 'ripple 2s ease-in-out infinite' : 'none' }} />
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%', background: item.color,
+                boxShadow: `0 0 8px ${item.color}`,
+                animation: item.status === 'Active' ? 'ripple 2s ease-in-out infinite' : 'none',
+              }} />
               <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{item.name}</span>
             </div>
-            <span style={{ fontSize: 12, color: item.color, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 500 }}>{item.status}</span>
+            <PretextGlitch text={item.status} fontSize={12} color={item.color} />
           </div>
         ))}
       </div>
@@ -384,7 +795,7 @@ function OverviewPanel({ clusters, suggestions, loading }) {
   );
 }
 
-function SubmitPanel() {
+function SubmitPanel({ onDataRefresh }) {
   const [shortDesc, setShortDesc] = useState('');
   const [detailedDesc, setDetailedDesc] = useState('');
   const [loading, setLoading] = useState(false);
@@ -430,6 +841,7 @@ function SubmitPanel() {
               });
               setLoading(false);
               setPollMsg('');
+              onDataRefresh?.();
               return;
             }
           } catch (err) {
@@ -441,6 +853,7 @@ function SubmitPanel() {
           } else {
             setPollMsg('Classification still processing — results may appear shortly.');
             setLoading(false);
+            onDataRefresh?.();
           }
         };
         setTimeout(poll, 2000);
@@ -775,7 +1188,7 @@ function parseCSV(text) {
 
 // ─── Upload Panel ───────────────────────────────────────────────────────────────
 
-function UploadPanel({ onNavigate }) {
+function UploadPanel({ onNavigate, onDataRefresh }) {
   const [parsedRows, setParsedRows] = useState([]);
   const [fileName, setFileName] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -856,6 +1269,7 @@ function UploadPanel({ onNavigate }) {
         if (attempts > maxAttempts) {
           setPollTracker(prev => prev.map(r => r.status === 'processing' ? { ...r, status: 'timeout' } : r));
         }
+        onDataRefresh?.();
         return;
       }
       const batch = pending.slice(0, 5);
@@ -1294,30 +1708,9 @@ function CustomLegend({ items }) {
   );
 }
 
-function AnalyticsPanel({ loading }) {
-  const [analytics, setAnalytics] = useState(null);
-  const [isMock, setIsMock] = useState(false);
-  const [error, setError] = useState(null);
+function AnalyticsPanel({ analytics, isMock, loading, error }) {
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const res = await fetch('/api/analytics');
-        if (res.ok) {
-          const data = await res.json();
-          if (data._mock) setIsMock(true);
-          setAnalytics(data.result || data);
-        } else {
-          setError('Failed to load analytics');
-        }
-      } catch (err) {
-        setError('Failed to load analytics');
-      }
-    };
-    fetchAnalytics();
-  }, []);
-
-  if (!analytics && !error) {
+  if (loading && !analytics && !error) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
         <Spinner size={24} />
@@ -1326,12 +1719,21 @@ function AnalyticsPanel({ loading }) {
     );
   }
 
-  if (error) {
+  if (!loading && error && !analytics) {
     return <div style={{ padding: 40, color: C.danger, fontSize: 14 }}>{error}</div>;
   }
 
-  const { summary, incidents_by_category, cluster_impact, confidence_distribution, demand_roi, pipeline_funnel } = analytics;
-  const cleanDemandName = (name = '') => name.split('Remediation Initiative')[0].replace(/[â€”—-]\s*$/, '').trim();
+  if (!analytics) {
+    return <div style={{ padding: 40, color: C.textSecondary, fontSize: 14 }}>Analytics data is not available yet.</div>;
+  }
+
+  const summary = analytics.summary || {};
+  const incidents_by_category = Array.isArray(analytics.incidents_by_category) ? analytics.incidents_by_category : [];
+  const cluster_impact = Array.isArray(analytics.cluster_impact) ? analytics.cluster_impact : [];
+  const confidence_distribution = analytics.confidence_distribution || { high: 0, medium: 0, low: 0 };
+  const demand_roi = Array.isArray(analytics.demand_roi) ? analytics.demand_roi : [];
+  const pipeline_funnel = analytics.pipeline_funnel || { incidents: 0, clusters: 0, suggestions: 0, demands: 0 };
+  const cleanDemandName = (name = '') => name.split('Remediation Initiative')[0].replace(/[\u2013\u2014-]\s*$/u, '').trim();
 
   const gridLight = 'rgba(255,255,255,0.06)';
   const tickColor = '#7D8699';
@@ -1411,17 +1813,17 @@ function AnalyticsPanel({ loading }) {
   const confOpts = {
     responsive: true, maintainAspectRatio: false, cutout: '65%',
     plugins: { legend: { display: false }, tooltip: {
-      callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw / confTotal * 100)}%)` },
+      callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw} (${confTotal ? Math.round(ctx.raw / confTotal * 100) : 0}%)` },
     }},
   };
 
   // --- Demand ROI (horizontal bar) ---
   const roiData = {
-    labels: demand_roi.map(d => d.name.replace(/ — Remediation Initiative/, '')),
+    labels: demand_roi.map((d) => cleanDemandName(d.name)),
     datasets: [{
       data: demand_roi.map(d => d.estimated_roi),
       backgroundColor: demand_roi.map((d) => {
-        const cat = d.name.split(' — ')[0];
+        const cat = cleanDemandName(d.name);
         return THEME_COLORS[cat] || '#378ADD';
       }),
       borderRadius: 4, barPercentage: 0.65,
@@ -1573,12 +1975,6 @@ function AnalyticsPanel({ loading }) {
         </ChartCard>
         <ChartCard title="Estimated ROI by Demand" height={240} delay={0.25}>
           <Bar data={cleanRoiData} options={cleanRoiOpts} />
-          {false && <HorizontalAxisChart
-            labels={demand_roi.map((d) => d.name.replace(/ â€” Remediation Initiative/, ''))}
-            ticks={roiTicks}
-            tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
-            chart={<Bar data={roiData} options={roiOpts} />}
-          />}
         </ChartCard>
       </div>
 
@@ -1597,40 +1993,64 @@ export default function App() {
   const [clusters, setClusters] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [demands, setDemands] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [demandsMock, setDemandsMock] = useState(false);
+  const [analyticsMock, setAnalyticsMock] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [clusterRes, sugRes, demandRes] = await Promise.all([
-          fetch('/api/clusters'),
-          fetch('/api/suggestions'),
-          fetch('/api/demands'),
-        ]);
-        if (clusterRes.ok) {
-          const cData = await clusterRes.json();
-          const clusterArr = cData?.result?.clusters || cData?.result || cData?.results || cData;
-          if (Array.isArray(clusterArr) && clusterArr.length > 0) setClusters(clusterArr);
-        }
-        if (sugRes.ok) {
-          const sData = await sugRes.json();
-          const sugArr = sData?.result?.project_suggestions || sData?.result || sData?.results || sData;
-          if (Array.isArray(sugArr) && sugArr.length > 0) setSuggestions(sugArr);
-        }
-        if (demandRes.ok) {
-          const dData = await demandRes.json();
-          if (dData._mock) setDemandsMock(true);
-          const demandArr = dData?.result || dData?.results || dData;
-          if (Array.isArray(demandArr) && demandArr.length > 0) setDemands(demandArr);
-        }
-      } catch (err) {
-        console.warn('Using mock data — ServiceNow unavailable:', err.message);
+  const refreshData = useCallback(async () => {
+    setDataLoaded(false);
+    setAnalyticsError(null);
+
+    try {
+      const [clusterRes, sugRes, demandRes, analyticsRes] = await Promise.allSettled([
+        fetch('/api/clusters'),
+        fetch('/api/suggestions'),
+        fetch('/api/demands'),
+        fetch('/api/analytics'),
+      ]);
+
+      if (clusterRes.status === 'fulfilled' && clusterRes.value.ok) {
+        const cData = await clusterRes.value.json();
+        const clusterArr = cData?.result?.clusters || cData?.result || cData?.results || cData;
+        setClusters(Array.isArray(clusterArr) ? clusterArr : []);
       }
+
+      if (sugRes.status === 'fulfilled' && sugRes.value.ok) {
+        const sData = await sugRes.value.json();
+        const sugArr = sData?.result?.project_suggestions || sData?.result || sData?.results || sData;
+        setSuggestions(Array.isArray(sugArr) ? sugArr : []);
+      }
+
+      if (demandRes.status === 'fulfilled' && demandRes.value.ok) {
+        const dData = await demandRes.value.json();
+        setDemandsMock(Boolean(dData?._mock));
+        const demandArr = dData?.result || dData?.results || dData;
+        setDemands(Array.isArray(demandArr) ? demandArr : []);
+      } else {
+        setDemandsMock(false);
+      }
+
+      if (analyticsRes.status === 'fulfilled' && analyticsRes.value.ok) {
+        const aData = await analyticsRes.value.json();
+        setAnalyticsMock(Boolean(aData?._mock));
+        setAnalytics(aData?.result || aData || null);
+      } else {
+        setAnalyticsMock(false);
+        setAnalyticsError('Failed to load analytics');
+      }
+    } catch (err) {
+      console.warn('Dashboard refresh failed:', err.message);
+      setAnalyticsError('Failed to load analytics');
+    } finally {
       setDataLoaded(true);
-    };
-    fetchData();
+    }
   }, []);
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
 
   const navItems = [
     { key: 'overview', label: 'Overview', icon: <IconOverview /> },
@@ -1741,12 +2161,12 @@ export default function App() {
         {/* Main Content */}
         <main style={{ marginLeft: 252, flex: 1, padding: '40px 44px 48px', minHeight: '100vh', animation: 'fadeUp 0.6s ease', position: 'relative' }}>
           {tab === 'overview' && <OverviewPanel clusters={clusters} suggestions={suggestions} loading={!dataLoaded} />}
-          {tab === 'submit' && <SubmitPanel />}
-          {tab === 'upload' && <UploadPanel onNavigate={setTab} />}
+          {tab === 'submit' && <SubmitPanel onDataRefresh={refreshData} />}
+          {tab === 'upload' && <UploadPanel onNavigate={setTab} onDataRefresh={refreshData} />}
           {tab === 'clusters' && <ClustersPanel clusters={clusters} />}
           {tab === 'projects' && <SuggestionsPanel suggestions={suggestions} />}
           {tab === 'demands' && <DemandsPanel demands={demands} isMock={demandsMock} loading={!dataLoaded} />}
-          {tab === 'analytics' && <AnalyticsPanel loading={!dataLoaded} />}
+          {tab === 'analytics' && <AnalyticsPanel analytics={analytics} isMock={analyticsMock} loading={!dataLoaded} error={analyticsError} />}
         </main>
       </div>
     </>

@@ -21,7 +21,8 @@
       "Bash(pandoc \"C:/Users/nnive/Downloads/Incident_Intelligence_Architecture_Book.docx\" -t plain)",
       "Bash(npx vite:*)",
       "Bash(git push:*)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
