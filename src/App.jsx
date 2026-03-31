@@ -1675,7 +1675,7 @@ const THEME_COLORS = {
 
 const FUNNEL_COLORS = ['#378ADD', '#1D9E75', '#534AB7', '#D85A30'];
 
-function ChartCard({ title, height = 230, children, delay = 0 }) {
+function ChartCard({ title, height = 230, children, delay = 0, headerRight = null }) {
   return (
     <div style={{
       background: `linear-gradient(160deg, rgba(13,26,48,0.9), rgba(5,11,22,0.95))`,
@@ -1683,25 +1683,36 @@ function ChartCard({ title, height = 230, children, delay = 0 }) {
       padding: '18px 20px', animation: `fadeUp 0.5s ease ${delay}s both`,
       boxShadow: '0 18px 40px rgba(0,0,0,0.22)', backdropFilter: 'blur(16px)',
     }}>
-      <div style={{
-        color: C.text, marginBottom: 14, maxWidth: 260, fontSize: 14, fontWeight: 700,
-        letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace",
-      }}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+        <div style={{
+          color: C.text, maxWidth: 260, fontSize: 14, fontWeight: 700,
+          letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace",
+          flexShrink: 0,
+        }}>{title}</div>
+        {headerRight}
+      </div>
       <div style={{ height, position: 'relative' }}>{children}</div>
     </div>
   );
 }
 
-function CustomLegend({ items }) {
+function CustomLegend({ items, compact = false }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', marginTop: 10, alignItems: 'flex-start' }}>
+    <div style={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: compact ? '6px 12px' : '8px 14px',
+      marginTop: compact ? 0 : 10,
+      alignItems: 'flex-start',
+      justifyContent: compact ? 'flex-end' : 'flex-start',
+    }}>
       {items.map((item, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, maxWidth: 190 }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: compact ? 'none' : 190 }}>
           <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, display: 'inline-block', flexShrink: 0 }} />
-          <span style={{ minWidth: 0, maxWidth: 168, fontSize: 12, lineHeight: 1.25, color: C.textSecondary }}>
+          <span style={{ minWidth: 0, maxWidth: compact ? 'none' : 168, fontSize: compact ? 11 : 12, lineHeight: 1.25, color: C.textSecondary, whiteSpace: compact ? 'nowrap' : 'normal' }}>
             {item.label}
           </span>
-          {item.value != null && <span style={{ fontSize: 11, color: C.text, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{item.value}</span>}
+          {item.value != null && <span style={{ fontSize: 11, color: C.text, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' }}>{item.value}</span>}
         </div>
       ))}
     </div>
@@ -1967,15 +1978,28 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
         <ChartCard title="Incidents by Category" height={260} delay={0.1}>
           <Bar data={categoryData} options={cleanCategoryOpts} />
         </ChartCard>
-        <ChartCard title="Cluster Impact Escalation" height={260} delay={0.15}>
+        <ChartCard
+          title="Cluster Impact Escalation"
+          height={260}
+          delay={0.15}
+          headerRight={<CustomLegend compact items={[{ color: '#378ADD', label: 'Incidents' }, { color: '#D85A30', label: 'Impact Level (1-4)' }]} />}
+        >
           <Bar data={clusterImpactData} options={cleanClusterImpactOpts} />
-          <CustomLegend items={[{ color: '#378ADD', label: 'Incidents' }, { color: '#D85A30', label: 'Impact Level (1-4)' }]} />
         </ChartCard>
       </div>
 
       {/* Row 3: Confidence Distribution + ROI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
-        <ChartCard title="AI Confidence Distribution" height={360} delay={0.2}>
+        <ChartCard
+          title="AI Confidence Distribution"
+          height={360}
+          delay={0.2}
+          headerRight={<CustomLegend compact items={[
+            { color: '#1D9E75', label: 'High (>80%)', value: confidence_distribution.high },
+            { color: '#BA7517', label: 'Medium', value: confidence_distribution.medium },
+            { color: '#E24B4A', label: 'Low (<60%)', value: confidence_distribution.low },
+          ]} />}
+        >
           <div style={{ position: 'relative', height: '100%' }}>
             <Doughnut data={confData} options={confOpts} />
             <div style={{
@@ -1986,11 +2010,6 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
               <div style={{ fontSize: 10, color: C.textSecondary, marginTop: 2 }}>avg confidence</div>
             </div>
           </div>
-          <CustomLegend items={[
-            { color: '#1D9E75', label: 'High (>80%)', value: confidence_distribution.high },
-            { color: '#BA7517', label: 'Medium', value: confidence_distribution.medium },
-            { color: '#E24B4A', label: 'Low (<60%)', value: confidence_distribution.low },
-          ]} />
         </ChartCard>
         <ChartCard title="Estimated ROI by Demand" height={360} delay={0.25}>
           <Bar data={cleanRoiData} options={cleanRoiOpts} />
