@@ -1747,16 +1747,9 @@ function AnalyticsPanel({ analytics, isMock, loading, error }) {
   const cleanDemandName = (name = '') => name.split('Remediation Initiative')[0].replace(/[\u2013\u2014-]\s*$/u, '').trim();
   const wrapAxisLabel = (label = '') => String(label).split(/\s+/).filter(Boolean);
   const confidenceTotal = confidence_distribution.high + confidence_distribution.medium + confidence_distribution.low;
-  const estimatedAvgConfidence = confidenceTotal
+  const displayAvgConfidence = confidenceTotal
     ? Math.round(((confidence_distribution.high * 90) + (confidence_distribution.medium * 70) + (confidence_distribution.low * 40)) / confidenceTotal)
     : 0;
-  const rawAvgConfidence = Number(summary.avg_confidence);
-  const normalizedAvgConfidence = Number.isFinite(rawAvgConfidence)
-    ? Math.round(rawAvgConfidence <= 1 ? rawAvgConfidence * 100 : rawAvgConfidence)
-    : estimatedAvgConfidence;
-  const displayAvgConfidence = Math.abs(normalizedAvgConfidence - estimatedAvgConfidence) > 25
-    ? estimatedAvgConfidence
-    : normalizedAvgConfidence;
 
   const gridLight = 'rgba(255,255,255,0.06)';
   const tickColor = '#7D8699';
