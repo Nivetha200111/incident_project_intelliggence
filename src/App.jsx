@@ -1046,7 +1046,14 @@ function ClustersPanel({ clusters }) {
               </div>
               {isOpen && (
                 <div style={{ padding: '0 20px 16px', animation: 'slideDown 0.3s ease' }}>
-                  <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>{cluster.summary}</div>
+                  <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                    <PretextFlowHex
+                      text={cluster.summary || 'No summary available.'}
+                      hexSize={48} fontSize={13}
+                      color={C.textSecondary} accent={ic}
+                      icon={cluster.impact_level === 'Critical' ? '!' : cluster.impact_level === 'High' ? '▲' : '◆'}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -1110,14 +1117,14 @@ function SuggestionsPanel({ suggestions }) {
                       padding: '14px 18px', background: 'rgba(32,201,160,0.06)', borderLeft: `3px solid ${C.accent}`,
                       borderRadius: '0 6px 6px 0',
                     }}>
-                      <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Justification</div>
+                      <div style={{ marginBottom: 8 }}><PretextGlitch text="Justification" fontSize={10} color={C.accent} /></div>
                       <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{sug.justification}</div>
                     </div>
                     <div style={{
                       padding: '14px 18px', background: 'rgba(32,201,160,0.04)', borderLeft: `3px solid ${C.mint}`,
                       borderRadius: '0 6px 6px 0',
                     }}>
-                      <div style={{ fontSize: 11, color: C.mint, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Expected Value</div>
+                      <div style={{ marginBottom: 8 }}><PretextGlitch text="Expected Value" fontSize={10} color={C.mint} /></div>
                       <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>{sug.expected_value}</div>
                     </div>
                   </div>
@@ -2146,22 +2153,32 @@ export default function App() {
                 background: `linear-gradient(135deg, ${C.accent}, ${C.info})`,
                 boxShadow: `0 8px 22px rgba(103,183,255,0.28)`,
                 animation: 'float 4s ease-in-out infinite',
-                overflow: 'hidden',
+                overflow: 'hidden', position: 'relative',
               }}>
-                <img src="/logo.svg" alt="Logo" style={{ width: 28, height: 28 }} />
+                <img src="/logo.svg" alt="Logo" style={{ width: 28, height: 28, position: 'relative', zIndex: 1 }} />
+                {/* Orbiting dot */}
+                <div style={{
+                  position: 'absolute', width: 4, height: 4, borderRadius: '50%',
+                  background: C.text, opacity: 0.6,
+                  animation: 'orbitDot 6s linear infinite',
+                }} />
               </div>
               <div>
-                <span style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: -0.5, display: 'block' }}>Incident Intel</span>
-                <span style={{ fontSize: 10, color: C.slate, fontFamily: "'IBM Plex Mono', monospace" }}>v2.0 · Grok Powered</span>
+                <PretextInline text="Incident Intel" width={160} fontSize={17} weight={700} color={C.text} accent={C.accent} />
+                <span style={{ fontSize: 10, color: C.slate, fontFamily: "'IBM Plex Mono', monospace", display: 'block', marginTop: 2 }}>v2.0 · Grok Powered</span>
               </div>
             </div>
           </div>
 
-          {/* Decorative line */}
-          <div style={{
-            height: 1, margin: '0 20px 8px',
-            background: `linear-gradient(90deg, transparent, ${C.accent}44, transparent)`,
-          }} />
+          {/* Decorative line with hex accents */}
+          <div style={{ margin: '0 20px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 4, height: 4, background: C.accent, opacity: 0.4, transform: 'rotate(45deg)' }} />
+            <div style={{
+              height: 1, flex: 1,
+              background: `linear-gradient(90deg, ${C.accent}44, transparent)`,
+            }} />
+            <div style={{ width: 4, height: 4, background: C.accent, opacity: 0.2, transform: 'rotate(45deg)' }} />
+          </div>
 
           <nav style={{ flex: 1, padding: '12px 14px' }}>
             {navItems.map((item, idx) => {
@@ -2178,6 +2195,7 @@ export default function App() {
                     fontSize: 13, fontWeight: active ? 600 : 500, fontFamily: "'Space Grotesk', sans-serif",
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', marginBottom: 2,
                     animation: `slideIn 0.4s ease ${idx * 0.05}s both`,
+                    position: 'relative',
                   }}
                   onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(32,201,160,0.06)'; e.currentTarget.style.color = C.text; e.currentTarget.style.paddingLeft = '20px'; } }}
                   onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textSecondary; e.currentTarget.style.paddingLeft = '16px'; } }}
@@ -2186,10 +2204,26 @@ export default function App() {
                   <span style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
                     {item.label}
                   </span>
+                  {/* Active indicator dot */}
+                  {active && (
+                    <span style={{
+                      width: 5, height: 5, borderRadius: '50%',
+                      background: C.accent, boxShadow: `0 0 6px ${C.accent}`,
+                      animation: 'pulse 2s ease-in-out infinite',
+                    }} />
+                  )}
                 </button>
               );
             })}
           </nav>
+
+          {/* Sidebar decorative pretext watermark */}
+          <div style={{
+            padding: '0 20px', marginBottom: 12, opacity: 0.04,
+            overflow: 'hidden', height: 40,
+          }}>
+            <PretextInline text="INCIDENT INTELLIGENCE SYSTEM" width={220} fontSize={9} weight={700} uppercase mono color={C.accent} accent={C.accent} />
+          </div>
 
           {/* Status bar */}
           <div style={{ padding: '16px 20px', borderTop: `1px solid ${C.border}` }}>
@@ -2200,8 +2234,11 @@ export default function App() {
           </div>
         </aside>
 
+        {/* Pretext Watermark Background */}
+        <PretextWatermark />
+
         {/* Main Content */}
-        <main style={{ marginLeft: 252, flex: 1, padding: '40px 44px 48px', minHeight: '100vh', animation: 'fadeUp 0.6s ease', position: 'relative' }}>
+        <main style={{ marginLeft: 252, flex: 1, padding: '40px 44px 48px', minHeight: '100vh', animation: 'fadeUp 0.6s ease', position: 'relative', zIndex: 1 }}>
           {tab === 'overview' && <OverviewPanel clusters={clusters} suggestions={suggestions} loading={!dataLoaded} />}
           {tab === 'submit' && <SubmitPanel onDataRefresh={refreshData} />}
           {tab === 'upload' && <UploadPanel onNavigate={setTab} onDataRefresh={refreshData} />}
